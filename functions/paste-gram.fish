@@ -1,7 +1,27 @@
 function paste-gram --description "Send text or file to Telegram" --argument cmdArg
+    set -l pastegram_version "v1.1.0"
     set -l token $TELEGRAM_TOKEN
     set -l chat_id $TELEGRAM_CHAT_ID
     set -l api_url (set -q TELEGRAM_API_URL; and echo $TELEGRAM_API_URL; or echo "https://api.telegram.org")
+
+    if test (count $argv) -gt 0
+        switch $argv[1]
+            case "-h" "--help"
+                printf "paste-gram — send text or files to Telegram\n\n"
+                printf "Usage:\n"
+                printf "  paste-gram \"message\"        # send plain text\n"
+                printf "  echo \"from pipe\" | paste-gram # send stdin\n"
+                printf "  paste-gram /path/to/file      # send file (auto-chunk >50MB)\n"
+                printf "  PASTEGRAM_HOSTNAME=true PASTEGRAM_LAST_COMMAND=true paste-gram \"msg\"\n\n"
+                printf "Env vars (required): TELEGRAM_TOKEN, TELEGRAM_CHAT_ID\n"
+                printf "Env vars (optional): TELEGRAM_API_URL, PASTEGRAM_HOSTNAME=true|1, PASTEGRAM_LAST_COMMAND=true|1\n"
+                printf "Dependencies: fish 3+, curl, jq, tar, split, stat\n"
+                return 0
+            case "-v" "-V" "--version"
+                printf "paste-gram %s\n" $pastegram_version
+                return 0
+        end
+    end
 
     if test -z "$token" -o -z "$chat_id"
         echo "❌ TELEGRAM_TOKEN and TELEGRAM_CHAT_ID must be set" >&2
