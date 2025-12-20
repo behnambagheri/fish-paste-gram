@@ -45,7 +45,7 @@ Send text or files to your Telegram chat directly from the Fish shell!
 1. **Install with [Fisher](https://github.com/jorgebucaran/fisher):**
 
 ```fish
-fisher install behnambagheri/paste-gram
+fisher install behnambagheri/fish-paste-gram
 ```
 
 2. **Set environment variables (numeric ID or channel username with `@`):**
