@@ -1,26 +1,57 @@
 function paste-gram --description "Send text or file to Telegram" --argument cmdArg
-    set -l pastegram_version "v1.1.0"
+    set -l pastegram_version "v1.2.0"
     set -l token $TELEGRAM_TOKEN
     set -l chat_id $TELEGRAM_CHAT_ID
     set -l api_url (set -q TELEGRAM_API_URL; and echo $TELEGRAM_API_URL; or echo "https://api.telegram.org")
+    set -l override_chat_id ""
+    set -l positional_args
 
-    if test (count $argv) -gt 0
-        switch $argv[1]
+    set -l i 1
+    set -l argc (count $argv)
+    while test $i -le $argc
+        set -l arg $argv[$i]
+        switch $arg
             case "-h" "--help"
                 printf "paste-gram — send text or files to Telegram\n\n"
                 printf "Usage:\n"
-                printf "  paste-gram \"message\"        # send plain text\n"
-                printf "  echo \"from pipe\" | paste-gram # send stdin\n"
-                printf "  paste-gram /path/to/file      # send file (auto-chunk >50MB)\n"
+                printf "  paste-gram \"message\"                 # send plain text\n"
+                printf "  echo \"from pipe\" | paste-gram        # send stdin\n"
+                printf "  paste-gram /path/to/file              # send file (auto-chunk >50MB)\n"
+                printf "  paste-gram --id @other_chat \"msg\"    # override TELEGRAM_CHAT_ID\n"
                 printf "  PASTEGRAM_HOSTNAME=true PASTEGRAM_LAST_COMMAND=true paste-gram \"msg\"\n\n"
                 printf "Env vars (required): TELEGRAM_TOKEN, TELEGRAM_CHAT_ID\n"
                 printf "Env vars (optional): TELEGRAM_API_URL, PASTEGRAM_HOSTNAME=true|1, PASTEGRAM_LAST_COMMAND=true|1\n"
+                printf "Flags (optional): --id|-i <chat-id> to override TELEGRAM_CHAT_ID\n"
                 printf "Dependencies: fish 3+, curl, jq, tar, split, stat\n"
                 return 0
             case "-v" "-V" "--version"
                 printf "paste-gram %s\n" $pastegram_version
                 return 0
+            case "-i" "--id" "-id"
+                if test (math "$i + 1") -le $argc
+                    set override_chat_id $argv[(math "$i + 1")]
+                    set i (math "$i + 1")
+                else
+                    echo "❌ --id requires a chat identifier" >&2
+                    return 1
+                end
+            case "--id=*"
+                set override_chat_id (string replace -- "--id=" "" $arg)
+            case "-i=*"
+                set override_chat_id (string replace -- "-i=" "" $arg)
+            case "--"
+                if test $i -lt $argc
+                    set positional_args $positional_args $argv[(math "$i + 1")..-1]
+                end
+                break
+            case "*"
+                set positional_args $positional_args $arg
         end
+        set i (math "$i + 1")
+    end
+
+    if test -n "$override_chat_id"
+        set chat_id $override_chat_id
     end
 
     if test -z "$token" -o -z "$chat_id"
@@ -75,11 +106,11 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
 #++++++++++++++++++++++++++++++++++++++++++
 
     if isatty stdin
-        if test -n "$argv"
+        if test -n "$positional_args"
         #echo "Reading from arguments..."
-            if test -f "$argv[1]"
+            if test -f "$positional_args[1]"
                 echo "Uploading file..."
-                set -f file $argv[1]
+                set -f file $positional_args[1]
                 set -l abs_path (realpath $file)
 
                 if test (uname) = "Darwin"
@@ -130,7 +161,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                     echo -e "Send Chuck: $i"
                     for i in "$splitdir/$file_name"_*
                         set response (curl -s -X POST "$api_url"/bot$token/"sendDocument" \
-                            -F chat_id="$chat_id" \
+                            --form-string chat_id="$chat_id" \
                             -F document=@"$i" \
                             -F caption="$(cat $message_text_file)" \
                             -F parse_mode="HTML" \
@@ -154,7 +185,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 else
 
                     set response (curl -s -X POST "$api_url"/bot$token/"sendDocument" \
-                        -F chat_id="$chat_id" \
+                        --form-string chat_id="$chat_id" \
                         -F document=@"$file" \
                         -F caption="$(cat $message_text_file)" \
                         -F parse_mode="HTML" \
@@ -178,7 +209,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
 
             else
 #                 echo "string from argument: $argv"
-                set -l message $argv[1]
+                set -l message $positional_args[1]
                 echo -e "$message" >> "$body_meesage_text_file"
                 if test (uname) = "Darwin"
                     sed -i '' 's#<#-#g' $body_meesage_text_file
@@ -218,7 +249,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
 
 
                     set response (curl -s -X POST "$api_url/bot$token/sendMessage" \
-                        -d chat_id="$chat_id" \
+                        --data-urlencode chat_id="$chat_id" \
                         --data-urlencode text="$(cat $message_text_file)" \
                         -d parse_mode="HTML" \
                         --connect-timeout 10 \
@@ -279,7 +310,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
             end
 
             set response (curl -s -X POST "$api_url/bot$token/sendMessage" \
-                -d chat_id="$chat_id" \
+                --data-urlencode chat_id="$chat_id" \
                 --data-urlencode text="$(cat $chunk)" \
                 -d parse_mode="HTML" \
                 --connect-timeout 10 \

@@ -4,11 +4,10 @@ Send text or files to your Telegram chat directly from the Fish shell!
 
 `paste-gram` is a lightweight Fish plugin that sends any input (either text or a file) to your Telegram bot using the Bot API. You can pipe output from other commands or pass messages/files directly. Perfect for quick remote sharing, logging, or personal note-taking!
 
-### 🚀 New in v1.1.0
-- Files over 50MB are now automatically compressed using `tar.gz`.
-- Compressed files are split into 49MB chunks and sent in sequence.
-- Compatible with both Linux and macOS.
-- Enhanced HTML-based captions include hostname, last command, and absolute path.
+### 🚀 New in v1.2.0
+- Override the destination chat on demand with `--id`/`-i` (e.g., `paste-gram --id @channel "hi"`).
+- Files over 50MB are auto-compressed (`tar.gz`) and split into 49MB chunks.
+- Compatible with both Linux and macOS with HTML-based captions for host/command/path.
 
 ---
 
@@ -21,6 +20,7 @@ Send text or files to your Telegram chat directly from the Fish shell!
   - Files (as documents with optional caption)
 - 🖥️ Can prepend hostname and/or command line (configurable)
 - 🔐 Gets config from environment variables
+- 🆔 Target either numeric chat IDs or usernames (channels) with `--id` / `TELEGRAM_CHAT_ID`
 
 ---
 
@@ -45,7 +45,7 @@ Send text or files to your Telegram chat directly from the Fish shell!
 fisher install behnambagheri/paste-gram
 ```
 
-2. **Set environment variables:**
+2. **Set environment variables (numeric ID or channel username with `@`):**
 
 ```fish
 set -Ux TELEGRAM_TOKEN 'your_bot_token_here'
@@ -102,6 +102,9 @@ echo "Hello from pipe" | ptg
 # Send direct message
 ptg "Direct hello from fish"
 
+# Send to a different chat/channel without changing TELEGRAM_CHAT_ID
+ptg --id @my_other_chat "Hello from another place"
+
 # Send a file with optional caption
 ptg ~/Documents/log.txt
 ```
@@ -119,6 +122,8 @@ If `PASTEGRAM_HOSTNAME` or `PASTEGRAM_LAST_COMMAND` is set to `"true"`, those wi
 | `TELEGRAM_API_URL`        | ❌ no    | `https://api.telegram.org` | Override default Telegram API URL (e.g. for proxy) |
 | `PASTEGRAM_HOSTNAME`      | ❌ no    | `false` | If `"true"`, includes hostname in message                    |
 | `PASTEGRAM_LAST_COMMAND`  | ❌ no    | `false` | If `"true"`, includes executed command line in message       |
+
+Use the `--id`/`-i` flag to override `TELEGRAM_CHAT_ID` for a single call (prefix with `@` for channels).
 
 ---
 

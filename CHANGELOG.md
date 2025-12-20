@@ -27,3 +27,11 @@
 ### Fixed
 - Cross-platform `stat` compatibility (macOS/Linux)
 - Better error detection for failed Telegram uploads
+
+## [v1.2.0] - 2025-12-20
+
+### Added
+- `--id`/`-i` flag to override `TELEGRAM_CHAT_ID` per call (works for files, direct args, and stdin).
+
+### Fixed
+- Sending to channel/usernames like `@example` now works for files and messages (chat_id sent as literal text for both APIs).
