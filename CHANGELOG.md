@@ -46,3 +46,8 @@
 
 ### Added
 - Auto-create `~/.config/paste-gram/chat_ids.json` with sample aliases on install (or first load) if missing.
+
+## [v1.3.2] - 2025-12-20
+
+### Changed
+- The auto-created alias map now contains placeholder entries only; users must fill in their own IDs.
