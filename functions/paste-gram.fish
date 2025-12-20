@@ -64,6 +64,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
     end
 
     set -l chat_ids
+    set -l chat_labels
     set -l to_resolve
     if test (count $override_chat_ids) -gt 0
         set to_resolve $override_chat_ids
@@ -73,12 +74,14 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
 
     for candidate in $to_resolve
         set -l resolved_id $candidate
+        set -l display_label $candidate
         if not string match -qr '^@' -- $resolved_id
             if not string match -qr '^[-]?[0-9]+$' -- $resolved_id
                 if test -f "$id_map_path"
                     set -l map_value (jq -r --arg key "$resolved_id" '.[$key] // empty' "$id_map_path" 2>/dev/null)
                     if test -n "$map_value"
                         set resolved_id $map_value
+                        set display_label "$candidate ($resolved_id)"
                     else
                         echo "❌ chat id alias '$resolved_id' not found in $id_map_path" >&2
                         return 1
@@ -87,15 +90,21 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                     echo "❌ chat id alias '$resolved_id' not found and map file missing at $id_map_path" >&2
                     return 1
                 end
+            else if test -f "$id_map_path"
+                set -l alias_value (jq -r --arg value "$resolved_id" 'to_entries[] | select(.value==$value) | .key' "$id_map_path" 2>/dev/null | head -n 1)
+                if test -n "$alias_value"
+                    set display_label "$alias_value ($resolved_id)"
+                end
             end
         end
         set chat_ids $chat_ids $resolved_id
+        set chat_labels $chat_labels $display_label
     end
 
     set -l color_ok (set_color green)
     set -l color_info (set_color cyan)
     set -l color_reset (set_color normal)
-    echo "$color_info→ Target chat IDs:" $chat_ids $color_reset
+    echo "$color_info→ Target chat IDs:" $chat_labels $color_reset
 
     set -l include_hostname (set -q PASTEGRAM_HOSTNAME; and echo $PASTEGRAM_HOSTNAME; or echo "false")
     set -l include_command (set -q PASTEGRAM_LAST_COMMAND; and echo $PASTEGRAM_LAST_COMMAND; or echo "false")
@@ -198,8 +207,10 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                     split -b 49MB -d "$file" $splitdir/"$file_name"_
                     echo -e "Send Chuck: $i"
                     for i in "$splitdir/$file_name"_*
-                        for target_chat_id in $chat_ids
-                            echo "$color_info→ sending chunk "(basename $i)" to $target_chat_id$color_reset"
+                        for idx in (seq (count $chat_ids))
+                            set -l target_chat_id $chat_ids[$idx]
+                            set -l target_label $chat_labels[$idx]
+                            echo "$color_info→ sending chunk "(basename $i)" to $target_label$color_reset"
                             set response (curl -s -X POST "$api_url"/bot$token/"sendDocument" \
                                 --form-string chat_id="$target_chat_id" \
                                 -F document=@"$i" \
@@ -220,14 +231,16 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                                 echo "Error: Failed to send chunk: "(echo $response | jq -r '.description // "Unknown error"')
                                 return 1
                             end
-                            echo "$color_ok✓ sent chunk "(basename $i)" to $target_chat_id$color_reset"
+                            echo "$color_ok✓ sent chunk "(basename $i)" to $target_label$color_reset"
                         end
                         rm -f "$i"
                     end
                 else
 
-                    for target_chat_id in $chat_ids
-                        echo "$color_info→ sending file $file_name to $target_chat_id$color_reset"
+                    for idx in (seq (count $chat_ids))
+                        set -l target_chat_id $chat_ids[$idx]
+                        set -l target_label $chat_labels[$idx]
+                        echo "$color_info→ sending file $file_name to $target_label$color_reset"
                         set response (curl -s -X POST "$api_url"/bot$token/"sendDocument" \
                             --form-string chat_id="$target_chat_id" \
                             -F document=@"$file" \
@@ -248,7 +261,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                             echo "Error: Failed to send chunk: "(echo $response | jq -r '.description // "Unknown error"')
                             return 1
                         end
-                        echo "$color_ok✓ sent file $file_name to $target_chat_id$color_reset"
+                        echo "$color_ok✓ sent file $file_name to $target_label$color_reset"
                     end
                 end
                 #++++++++++++++++++++++++++++++++++++++
@@ -293,8 +306,10 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                     end
 
 
-                    for target_chat_id in $chat_ids
-                        echo "$color_info→ sending chunk "(basename $chunk)" to $target_chat_id$color_reset"
+                    for idx in (seq (count $chat_ids))
+                        set -l target_chat_id $chat_ids[$idx]
+                        set -l target_label $chat_labels[$idx]
+                        echo "$color_info→ sending chunk "(basename $chunk)" to $target_label$color_reset"
                         set response (curl -s -X POST "$api_url/bot$token/sendMessage" \
                             --data-urlencode chat_id="$target_chat_id" \
                             --data-urlencode text="$(cat $message_text_file)" \
@@ -311,7 +326,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                             echo "Error: Failed to send chunk: "(echo $response | jq -r '.description // "Unknown error"')
                             return 1
                         end
-                        echo "$color_ok✓ sent chunk "(basename $chunk)" to $target_chat_id$color_reset"
+                        echo "$color_ok✓ sent chunk "(basename $chunk)" to $target_label$color_reset"
                     end
                 end
             end
@@ -357,8 +372,10 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 mv "$chunk.tmp" "$chunk"
             end
 
-            for target_chat_id in $chat_ids
-                echo "$color_info→ sending chunk "(basename $chunk)" to $target_chat_id$color_reset"
+            for idx in (seq (count $chat_ids))
+                set -l target_chat_id $chat_ids[$idx]
+                set -l target_label $chat_labels[$idx]
+                echo "$color_info→ sending chunk "(basename $chunk)" to $target_label$color_reset"
                 set response (curl -s -X POST "$api_url/bot$token/sendMessage" \
                     --data-urlencode chat_id="$target_chat_id" \
                     --data-urlencode text="$(cat $chunk)" \
@@ -376,7 +393,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                     echo "Error: Failed to send chunk: "(echo $response | jq -r '.description // "Unknown error"')
                     return 1
                 end
-                echo "$color_ok✓ sent chunk "(basename $chunk)" to $target_chat_id$color_reset"
+                echo "$color_ok✓ sent chunk "(basename $chunk)" to $target_label$color_reset"
             end
         end
     end

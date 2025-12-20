@@ -69,3 +69,8 @@
 
 ### Added
 - Fish completions for `paste-gram` and `ptg`, including alias suggestions from the ID map.
+
+## [v1.4.3] - 2025-12-20
+
+### Changed
+- Logs prefer showing alias names alongside chat IDs when available.
