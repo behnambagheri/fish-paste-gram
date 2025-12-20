@@ -1,10 +1,11 @@
 function paste-gram --description "Send text or file to Telegram" --argument cmdArg
-    set -l pastegram_version "v1.2.0"
+    set -l pastegram_version "v1.3.0"
     set -l token $TELEGRAM_TOKEN
     set -l chat_id $TELEGRAM_CHAT_ID
     set -l api_url (set -q TELEGRAM_API_URL; and echo $TELEGRAM_API_URL; or echo "https://api.telegram.org")
     set -l override_chat_id ""
     set -l positional_args
+    set -l id_map_path (set -q PASTEGRAM_ID_MAP; and echo $PASTEGRAM_ID_MAP; or echo "$HOME/.config/paste-gram/chat_ids.json")
 
     set -l i 1
     set -l argc (count $argv)
@@ -17,11 +18,11 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 printf "  paste-gram \"message\"                 # send plain text\n"
                 printf "  echo \"from pipe\" | paste-gram        # send stdin\n"
                 printf "  paste-gram /path/to/file              # send file (auto-chunk >50MB)\n"
-                printf "  paste-gram --id @other_chat \"msg\"    # override TELEGRAM_CHAT_ID\n"
+                printf "  paste-gram --id @other_chat \"msg\"    # override TELEGRAM_CHAT_ID (numeric or alias)\n"
                 printf "  PASTEGRAM_HOSTNAME=true PASTEGRAM_LAST_COMMAND=true paste-gram \"msg\"\n\n"
                 printf "Env vars (required): TELEGRAM_TOKEN, TELEGRAM_CHAT_ID\n"
-                printf "Env vars (optional): TELEGRAM_API_URL, PASTEGRAM_HOSTNAME=true|1, PASTEGRAM_LAST_COMMAND=true|1\n"
-                printf "Flags (optional): --id|-i <chat-id> to override TELEGRAM_CHAT_ID\n"
+                printf "Env vars (optional): TELEGRAM_API_URL, PASTEGRAM_HOSTNAME=true|1, PASTEGRAM_LAST_COMMAND=true|1, PASTEGRAM_ID_MAP=<path to alias json>\n"
+                printf "Flags (optional): --id|-i <chat-id|alias> to override TELEGRAM_CHAT_ID\n"
                 printf "Dependencies: fish 3+, curl, jq, tar, split, stat\n"
                 return 0
             case "-v" "-V" "--version"
@@ -51,7 +52,24 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
     end
 
     if test -n "$override_chat_id"
-        set chat_id $override_chat_id
+        set -l resolved_id $override_chat_id
+        if not string match -qr '^@' -- $resolved_id
+            if not string match -qr '^[-]?[0-9]+$' -- $resolved_id
+                if test -f "$id_map_path"
+                    set -l map_value (jq -r --arg key "$resolved_id" '.[$key] // empty' "$id_map_path" 2>/dev/null)
+                    if test -n "$map_value"
+                        set resolved_id $map_value
+                    else
+                        echo "❌ chat id alias '$resolved_id' not found in $id_map_path" >&2
+                        return 1
+                    end
+                else
+                    echo "❌ chat id alias '$resolved_id' not found and map file missing at $id_map_path" >&2
+                    return 1
+                end
+            end
+        end
+        set chat_id $resolved_id
     end
 
     if test -z "$token" -o -z "$chat_id"

@@ -4,8 +4,8 @@ Send text or files to your Telegram chat directly from the Fish shell!
 
 `paste-gram` is a lightweight Fish plugin that sends any input (either text or a file) to your Telegram bot using the Bot API. You can pipe output from other commands or pass messages/files directly. Perfect for quick remote sharing, logging, or personal note-taking!
 
-### 🚀 New in v1.2.0
-- Override the destination chat on demand with `--id`/`-i` (e.g., `paste-gram --id @channel "hi"`).
+### 🚀 New in v1.3.0
+- Override the destination chat on demand with `--id`/`-i`, now supporting aliases via a JSON map.
 - Files over 50MB are auto-compressed (`tar.gz`) and split into 49MB chunks.
 - Compatible with both Linux and macOS with HTML-based captions for host/command/path.
 
@@ -102,7 +102,7 @@ echo "Hello from pipe" | ptg
 # Send direct message
 ptg "Direct hello from fish"
 
-# Send to a different chat/channel without changing TELEGRAM_CHAT_ID
+# Send to a different chat/channel without changing TELEGRAM_CHAT_ID (numeric, @username, or alias)
 ptg --id @my_other_chat "Hello from another place"
 
 # Send a file with optional caption
@@ -122,6 +122,30 @@ If `PASTEGRAM_HOSTNAME` or `PASTEGRAM_LAST_COMMAND` is set to `"true"`, those wi
 | `TELEGRAM_API_URL`        | ❌ no    | `https://api.telegram.org` | Override default Telegram API URL (e.g. for proxy) |
 | `PASTEGRAM_HOSTNAME`      | ❌ no    | `false` | If `"true"`, includes hostname in message                    |
 | `PASTEGRAM_LAST_COMMAND`  | ❌ no    | `false` | If `"true"`, includes executed command line in message       |
+| `PASTEGRAM_ID_MAP`        | ❌ no    | `$HOME/.config/paste-gram/chat_ids.json` | Path to alias map for `--id` lookups |
+
+### 🧭 Chat alias map
+
+Create a JSON file for friendly names (default path: `~/.config/paste-gram/chat_ids.json`, or set `PASTEGRAM_ID_MAP` to another path):
+
+```json
+{
+  "bea": "323101679",
+  "reza": "5415541173",
+  "pastebin": "-1001804111897",
+  "nikneshan": "110876335",
+  "nik": "110876335",
+  "ali": "226172014",
+  "yara": "157350506"
+}
+```
+
+Then use the alias with `--id`:
+
+```fish
+ptg --id bea "Hello Behnam"
+ptg --id pastebin /path/to/file.log
+```
 
 Use the `--id`/`-i` flag to override `TELEGRAM_CHAT_ID` for a single call (prefix with `@` for channels).
 

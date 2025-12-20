@@ -23,8 +23,19 @@ Dependencies: Fish 3+, `curl`, `jq`, `tar`, `split`, `stat`.
 - Send a file: `ptg /path/to/file.log`
 - Send a big file locally: `PTG_TMP=(mktemp); seq 1 5000 >$PTG_TMP; ptg $PTG_TMP`
 - Override destination chat for one call: `ptg --id @my_other_chat "Hello"`
-- `--id`/`-i` accepts numeric IDs or `@channel` usernames.
+- `--id`/`-i` accepts numeric IDs, `@channel` usernames, or aliases from a JSON map.
 - Include metadata: `PASTEGRAM_HOSTNAME=true PASTEGRAM_LAST_COMMAND=true ptg "payload"`
+
+## Chat alias map
+- Default path: `~/.config/paste-gram/chat_ids.json` (override with `PASTEGRAM_ID_MAP`).
+- Example:
+  ```json
+  {
+    "bea": "323101679",
+    "reza": "5415541173"
+  }
+  ```
+- Usage: `ptg --id bea "Hi"` or `ptg --id reza /path/to/file`.
 
 ## How it behaves
 - Text is wrapped in `<pre>` and split into ~3.8KB chunks to satisfy Telegram limits.
