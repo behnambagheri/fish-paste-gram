@@ -4,8 +4,9 @@ Send text or files to your Telegram chat directly from the Fish shell!
 
 `paste-gram` is a lightweight Fish plugin that sends any input (either text or a file) to your Telegram bot using the Bot API. You can pipe output from other commands or pass messages/files directly. Perfect for quick remote sharing, logging, or personal note-taking!
 
-### 🚀 New in v1.3.0
-- Override the destination chat on demand with `--id`/`-i`, now supporting aliases via a JSON map.
+### 🚀 New in v1.3.1
+- Default install now creates `~/.config/paste-gram/chat_ids.json` with sample aliases.
+- Override the destination chat on demand with `--id`/`-i`, supporting aliases via a JSON map.
 - Files over 50MB are auto-compressed (`tar.gz`) and split into 49MB chunks.
 - Compatible with both Linux and macOS with HTML-based captions for host/command/path.
 
@@ -146,6 +147,8 @@ Then use the alias with `--id`:
 ptg --id bea "Hello Behnam"
 ptg --id pastebin /path/to/file.log
 ```
+
+During install, a sample map is created at the default path if one does not already exist.
 
 Use the `--id`/`-i` flag to override `TELEGRAM_CHAT_ID` for a single call (prefix with `@` for channels).
 

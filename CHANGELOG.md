@@ -41,3 +41,8 @@
 ### Added
 - Alias lookup for `--id` via JSON map (default `~/.config/paste-gram/chat_ids.json`, override with `PASTEGRAM_ID_MAP`).
 - `--id` now accepts numeric IDs, `@user`/`@channel`, or aliases.
+
+## [v1.3.1] - 2025-12-20
+
+### Added
+- Auto-create `~/.config/paste-gram/chat_ids.json` with sample aliases on install (or first load) if missing.

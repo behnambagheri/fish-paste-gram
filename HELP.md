@@ -27,7 +27,7 @@ Dependencies: Fish 3+, `curl`, `jq`, `tar`, `split`, `stat`.
 - Include metadata: `PASTEGRAM_HOSTNAME=true PASTEGRAM_LAST_COMMAND=true ptg "payload"`
 
 ## Chat alias map
-- Default path: `~/.config/paste-gram/chat_ids.json` (override with `PASTEGRAM_ID_MAP`).
+- Default path: `~/.config/paste-gram/chat_ids.json` (override with `PASTEGRAM_ID_MAP`). A sample file is created automatically on install if missing.
 - Example:
   ```json
   {
