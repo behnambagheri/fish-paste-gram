@@ -1,1 +1,1 @@
-alias ptg2='paste-gram'
+alias ptg='paste-gram'
