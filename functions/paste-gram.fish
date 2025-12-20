@@ -1,9 +1,9 @@
 function paste-gram --description "Send text or file to Telegram" --argument cmdArg
-    set -l pastegram_version "v1.3.2"
+    set -l pastegram_version "v1.4.0"
     set -l token $TELEGRAM_TOKEN
     set -l chat_id $TELEGRAM_CHAT_ID
     set -l api_url (set -q TELEGRAM_API_URL; and echo $TELEGRAM_API_URL; or echo "https://api.telegram.org")
-    set -l override_chat_id ""
+    set -l override_chat_ids
     set -l positional_args
     set -l id_map_path (set -q PASTEGRAM_ID_MAP; and echo $PASTEGRAM_ID_MAP; or echo "$HOME/.config/paste-gram/chat_ids.json")
 
@@ -18,11 +18,11 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 printf "  paste-gram \"message\"                 # send plain text\n"
                 printf "  echo \"from pipe\" | paste-gram        # send stdin\n"
                 printf "  paste-gram /path/to/file              # send file (auto-chunk >50MB)\n"
-                printf "  paste-gram --id @other_chat \"msg\"    # override TELEGRAM_CHAT_ID (numeric or alias)\n"
+                printf "  paste-gram --id @other_chat \"msg\"    # override TELEGRAM_CHAT_ID (numeric, alias, repeatable)\n"
                 printf "  PASTEGRAM_HOSTNAME=true PASTEGRAM_LAST_COMMAND=true paste-gram \"msg\"\n\n"
                 printf "Env vars (required): TELEGRAM_TOKEN, TELEGRAM_CHAT_ID\n"
                 printf "Env vars (optional): TELEGRAM_API_URL, PASTEGRAM_HOSTNAME=true|1, PASTEGRAM_LAST_COMMAND=true|1, PASTEGRAM_ID_MAP=<path to alias json>\n"
-                printf "Flags (optional): --id|-i <chat-id|alias> to override TELEGRAM_CHAT_ID\n"
+                printf "Flags (optional): --id|-i <chat-id|alias> (repeatable) to override TELEGRAM_CHAT_ID\n"
                 printf "Dependencies: fish 3+, curl, jq, tar, split, stat\n"
                 return 0
             case "-v" "-V" "--version"
@@ -30,16 +30,19 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 return 0
             case "-i" "--id" "-id"
                 if test (math "$i + 1") -le $argc
-                    set override_chat_id $argv[(math "$i + 1")]
+                    set -l raw_value $argv[(math "$i + 1")]
+                    set override_chat_ids $override_chat_ids (string split "," -- $raw_value)
                     set i (math "$i + 1")
                 else
                     echo "❌ --id requires a chat identifier" >&2
                     return 1
                 end
             case "--id=*"
-                set override_chat_id (string replace -- "--id=" "" $arg)
+                set -l raw_value (string replace -- "--id=" "" $arg)
+                set override_chat_ids $override_chat_ids (string split "," -- $raw_value)
             case "-i=*"
-                set override_chat_id (string replace -- "-i=" "" $arg)
+                set -l raw_value (string replace -- "-i=" "" $arg)
+                set override_chat_ids $override_chat_ids (string split "," -- $raw_value)
             case "--"
                 if test $i -lt $argc
                     set positional_args $positional_args $argv[(math "$i + 1")..-1]
@@ -51,8 +54,25 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
         set i (math "$i + 1")
     end
 
-    if test -n "$override_chat_id"
-        set -l resolved_id $override_chat_id
+    if test -z "$token"
+        echo "❌ TELEGRAM_TOKEN must be set" >&2
+        return 1
+    end
+    if test (count $override_chat_ids) -eq 0; and test -z "$chat_id"
+        echo "❌ TELEGRAM_CHAT_ID must be set or pass --id" >&2
+        return 1
+    end
+
+    set -l chat_ids
+    set -l to_resolve
+    if test (count $override_chat_ids) -gt 0
+        set to_resolve $override_chat_ids
+    else
+        set to_resolve $chat_id
+    end
+
+    for candidate in $to_resolve
+        set -l resolved_id $candidate
         if not string match -qr '^@' -- $resolved_id
             if not string match -qr '^[-]?[0-9]+$' -- $resolved_id
                 if test -f "$id_map_path"
@@ -69,12 +89,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 end
             end
         end
-        set chat_id $resolved_id
-    end
-
-    if test -z "$token" -o -z "$chat_id"
-        echo "❌ TELEGRAM_TOKEN and TELEGRAM_CHAT_ID must be set" >&2
-        return 1
+        set chat_ids $chat_ids $resolved_id
     end
 
     set -l include_hostname (set -q PASTEGRAM_HOSTNAME; and echo $PASTEGRAM_HOSTNAME; or echo "false")
@@ -178,9 +193,36 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                     split -b 49MB -d "$file" $splitdir/"$file_name"_
                     echo -e "Send Chuck: $i"
                     for i in "$splitdir/$file_name"_*
+                        for target_chat_id in $chat_ids
+                            set response (curl -s -X POST "$api_url"/bot$token/"sendDocument" \
+                                --form-string chat_id="$target_chat_id" \
+                                -F document=@"$i" \
+                                -F caption="$(cat $message_text_file)" \
+                                -F parse_mode="HTML" \
+                                --connect-timeout 10 \
+                                --max-time 30)
+
+                            set -l status_ok (echo $response | jq .ok)
+                            set -l status_description (echo $response | jq .description)
+
+                            if test $status -ne 0
+                                echo "Error: Failed to connect to Telegram API!"
+                                return 1
+                            end
+
+                            if not echo $response | jq -e '.ok' >/dev/null
+                                echo "Error: Failed to send chunk: "(echo $response | jq -r '.description // "Unknown error"')
+                                return 1
+                            end
+                        end
+                        rm -f "$i"
+                    end
+                else
+
+                    for target_chat_id in $chat_ids
                         set response (curl -s -X POST "$api_url"/bot$token/"sendDocument" \
-                            --form-string chat_id="$chat_id" \
-                            -F document=@"$i" \
+                            --form-string chat_id="$target_chat_id" \
+                            -F document=@"$file" \
                             -F caption="$(cat $message_text_file)" \
                             -F parse_mode="HTML" \
                             --connect-timeout 10 \
@@ -198,29 +240,6 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                             echo "Error: Failed to send chunk: "(echo $response | jq -r '.description // "Unknown error"')
                             return 1
                         end
-                        rm -f "$i"
-                    end
-                else
-
-                    set response (curl -s -X POST "$api_url"/bot$token/"sendDocument" \
-                        --form-string chat_id="$chat_id" \
-                        -F document=@"$file" \
-                        -F caption="$(cat $message_text_file)" \
-                        -F parse_mode="HTML" \
-                        --connect-timeout 10 \
-                        --max-time 30)
-
-                    set -l status_ok (echo $response | jq .ok)
-                    set -l status_description (echo $response | jq .description)
-
-                    if test $status -ne 0
-                        echo "Error: Failed to connect to Telegram API!"
-                        return 1
-                    end
-
-                    if not echo $response | jq -e '.ok' >/dev/null
-                        echo "Error: Failed to send chunk: "(echo $response | jq -r '.description // "Unknown error"')
-                        return 1
                     end
                 end
                 #++++++++++++++++++++++++++++++++++++++
@@ -266,21 +285,23 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                     end
 
 
-                    set response (curl -s -X POST "$api_url/bot$token/sendMessage" \
-                        --data-urlencode chat_id="$chat_id" \
-                        --data-urlencode text="$(cat $message_text_file)" \
-                        -d parse_mode="HTML" \
-                        --connect-timeout 10 \
-                        --max-time 30)
+                    for target_chat_id in $chat_ids
+                        set response (curl -s -X POST "$api_url/bot$token/sendMessage" \
+                            --data-urlencode chat_id="$target_chat_id" \
+                            --data-urlencode text="$(cat $message_text_file)" \
+                            -d parse_mode="HTML" \
+                            --connect-timeout 10 \
+                            --max-time 30)
 
-                    if test $status -ne 0
-                        echo "Error: Failed to connect to Telegram API!"
-                        return 1
-                    end
+                        if test $status -ne 0
+                            echo "Error: Failed to connect to Telegram API!"
+                            return 1
+                        end
 
-                    if not echo $response | jq -e '.ok' >/dev/null
-                        echo "Error: Failed to send chunk: "(echo $response | jq -r '.description // "Unknown error"')
-                        return 1
+                        if not echo $response | jq -e '.ok' >/dev/null
+                            echo "Error: Failed to send chunk: "(echo $response | jq -r '.description // "Unknown error"')
+                            return 1
+                        end
                     end
                 end
             end
@@ -327,22 +348,24 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 mv "$chunk.tmp" "$chunk"
             end
 
-            set response (curl -s -X POST "$api_url/bot$token/sendMessage" \
-                --data-urlencode chat_id="$chat_id" \
-                --data-urlencode text="$(cat $chunk)" \
-                -d parse_mode="HTML" \
-                --connect-timeout 10 \
-                --max-time 30)
+            for target_chat_id in $chat_ids
+                set response (curl -s -X POST "$api_url/bot$token/sendMessage" \
+                    --data-urlencode chat_id="$target_chat_id" \
+                    --data-urlencode text="$(cat $chunk)" \
+                    -d parse_mode="HTML" \
+                    --connect-timeout 10 \
+                    --max-time 30)
 
 
-            if test $status -ne 0
-                echo "Error: Failed to connect to Telegram API!"
-                return 1
-            end
+                if test $status -ne 0
+                    echo "Error: Failed to connect to Telegram API!"
+                    return 1
+                end
 
-            if not echo $response | jq -e '.ok' >/dev/null
-                echo "Error: Failed to send chunk: "(echo $response | jq -r '.description // "Unknown error"')
-                return 1
+                if not echo $response | jq -e '.ok' >/dev/null
+                    echo "Error: Failed to send chunk: "(echo $response | jq -r '.description // "Unknown error"')
+                    return 1
+                end
             end
         end
     end

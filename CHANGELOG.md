@@ -51,3 +51,8 @@
 
 ### Changed
 - The auto-created alias map now contains placeholder entries only; users must fill in their own IDs.
+
+## [v1.4.0] - 2025-12-20
+
+### Added
+- Support multiple `--id`/`-i` values (repeat flags or comma-separate) to send to several chats in one command.

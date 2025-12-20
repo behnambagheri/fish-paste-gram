@@ -23,7 +23,7 @@ Dependencies: Fish 3+, `curl`, `jq`, `tar`, `split`, `stat`.
 - Send a file: `ptg /path/to/file.log`
 - Send a big file locally: `PTG_TMP=(mktemp); seq 1 5000 >$PTG_TMP; ptg $PTG_TMP`
 - Override destination chat for one call: `ptg --id @my_other_chat "Hello"`
-- `--id`/`-i` accepts numeric IDs, `@channel` usernames, or aliases from a JSON map.
+- `--id`/`-i` accepts numeric IDs, `@channel` usernames, or aliases from a JSON map; repeat the flag or comma-separate to send to multiple chats.
 - Include metadata: `PASTEGRAM_HOSTNAME=true PASTEGRAM_LAST_COMMAND=true ptg "payload"`
 
 ## Chat alias map
