@@ -56,3 +56,11 @@
 
 ### Added
 - Support multiple `--id`/`-i` values (repeat flags or comma-separate) to send to several chats in one command.
+
+## [v1.4.1] - 2025-12-20
+
+### Added
+- Colored logs indicating each target chat during sends (messages and files).
+
+### Changed
+- Placeholder alias map and docs use generic sample names only (friend1/friend2/demo_channel).

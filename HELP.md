@@ -31,11 +31,11 @@ Dependencies: Fish 3+, `curl`, `jq`, `tar`, `split`, `stat`.
 - Example:
   ```json
   {
-    "bea": "323101679",
-    "reza": "5415541173"
+    "friend1": "123456789",
+    "friend2": "987654321"
   }
   ```
-- Usage: `ptg --id bea "Hi"` or `ptg --id reza /path/to/file`.
+- Usage: `ptg --id friend1 "Hi"` or `ptg --id friend2 /path/to/file`.
 
 ## How it behaves
 - Text is wrapped in `<pre>` and split into ~3.8KB chunks to satisfy Telegram limits.
