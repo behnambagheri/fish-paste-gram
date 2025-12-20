@@ -64,3 +64,8 @@
 
 ### Changed
 - Placeholder alias map and docs use generic sample names only (friend1/friend2/demo_channel).
+
+## [v1.4.2] - 2025-12-20
+
+### Added
+- Fish completions for `paste-gram` and `ptg`, including alias suggestions from the ID map.

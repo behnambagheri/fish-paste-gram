@@ -37,6 +37,8 @@ Dependencies: Fish 3+, `curl`, `jq`, `tar`, `split`, `stat`.
   ```
 - Usage: `ptg --id friend1 "Hi"` or `ptg --id friend2 /path/to/file`.
 
+Completions: Fish completions are provided for both `paste-gram` and `ptg`, including alias suggestions when your map file exists.
+
 ## How it behaves
 - Text is wrapped in `<pre>` and split into ~3.8KB chunks to satisfy Telegram limits.
 - Files over 50MB are compressed (`tar.gz`) and split into 49MB chunks; each chunk is sent sequentially.
