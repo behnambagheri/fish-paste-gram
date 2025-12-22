@@ -4,11 +4,18 @@ function __paste_gram_id_candidates
         return
     end
     if command -sq jq
-        jq -r 'to_entries[] | "\(.key)\t\(.value)"' "$map_path" 2>/dev/null
+        jq -r 'to_entries[] | "\(.key)\t\(
+            if (.value | type) == "object" then
+                (.value.username // .value.chat_id // "")
+            else
+                .value
+            end
+        )"' "$map_path" 2>/dev/null
     end
 end
 
 complete -c paste-gram -s h -l help -d "Show help"
 complete -c paste-gram -s v -s V -l version -d "Show version"
 complete -c paste-gram -s i -l id -o id -d "Override chat id (numeric, @user, or alias; repeatable)" -x -a "(__paste_gram_id_candidates)"
+complete -c paste-gram -l mtproto -l personal -d "Send via personal account (MTProto)"
 complete -c paste-gram -n "__fish_is_first_arg; and not string match -qr '^-.*' -- (commandline -ct)" -a "(__fish_complete_path)" -d "File to send"

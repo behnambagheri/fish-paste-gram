@@ -1,5 +1,15 @@
 # Changelog
 
+## [v1.5.1] - 2025-12-20
+
+### Changed
+- Chat alias map now supports objects with `chat_id` and `username` (username preferred when present).
+
+## [v1.5.0] - 2025-12-20
+
+### Added
+- MTProto mode for sending as a personal account (`--mtproto`/`--personal`) with new env vars.
+
 ## [v1.0.0] - 2025-06-11
 
 ### Added
