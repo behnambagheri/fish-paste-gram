@@ -1,5 +1,22 @@
 # Changelog
 
+## [v1.6.0] - 2026-02-25
+
+### Added
+- MTProto proxy support via `TELEGRAM_MT_PROXY` URL (`socks5://`, `socks4://`, `http://`, `mtproxy://`) or split env vars (`TELEGRAM_MT_PROXY_TYPE/HOST/PORT` with optional auth/secret).
+
+### Changed
+- `--help` now lists MTProto proxy environment variables.
+- MTProto now prefers a Python runtime with an installed Telethon environment (including pipx `telethon` venv) so injected dependencies like `pysocks` are honored.
+
+## [v1.5.2] - 2026-02-25
+
+### Fixed
+- `TELEGRAM_API_URL` handling now trims whitespace, ignores empty values, and strips trailing slashes before requests.
+
+### Docs
+- Added troubleshooting steps to verify which installed Fish function file is active and how to reinstall via Fisher.
+
 ## [v1.5.1] - 2025-12-20
 
 ### Changed

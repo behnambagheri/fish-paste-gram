@@ -63,6 +63,19 @@ set -Ux PASTEGRAM_HOSTNAME 'true'
 set -Ux PASTEGRAM_LAST_COMMAND 'true'
 ```
 
+If you changed `TELEGRAM_API_URL` but requests still go to `api.telegram.org`, check which function file Fish is actually running:
+
+```fish
+functions paste-gram | head -n 1
+```
+
+If it points to `~/.config/fish/functions/paste-gram.fish`, reinstall to refresh your installed copy:
+
+```fish
+fisher remove behnambagheri/fish-paste-gram
+fisher install behnambagheri/fish-paste-gram
+```
+
 ---
 
 ## 🤖 How to Get Your Telegram Bot Token
@@ -89,11 +102,43 @@ Use MTProto to send messages as your own Telegram account (not a bot).
    ```fish
    pipx install telethon
    ```
+   For MTProto proxy support, also install PySocks in the same environment:
+   ```fish
+   pipx inject telethon pysocks
+   ```
 3. Set env vars and send:
    ```fish
    set -Ux TELEGRAM_MT_API_ID '123456'
    set -Ux TELEGRAM_MT_API_HASH 'your_api_hash_here'
    ptg --mtproto "Hello from my account"
+   ```
+
+4. Optional: route MTProto via proxy:
+   ```fish
+   # URL form (recommended)
+   set -Ux TELEGRAM_MT_PROXY 'socks5://user:pass@proxy.example.com:1080'
+
+   # Split variables form
+   set -Ux TELEGRAM_MT_PROXY_TYPE 'socks5' # socks5|socks4|http|mtproxy
+   set -Ux TELEGRAM_MT_PROXY_HOST 'proxy.example.com'
+   set -Ux TELEGRAM_MT_PROXY_PORT '1080'
+   set -Ux TELEGRAM_MT_PROXY_USERNAME 'user'
+   set -Ux TELEGRAM_MT_PROXY_PASSWORD 'pass'
+   ```
+
+   MTProxy example:
+   ```fish
+   set -Ux TELEGRAM_MT_PROXY_TYPE 'mtproxy'
+   set -Ux TELEGRAM_MT_PROXY_HOST 'proxy.example.com'
+   set -Ux TELEGRAM_MT_PROXY_PORT '443'
+   set -Ux TELEGRAM_MT_PROXY_SECRET 'your_hex_secret'
+   ```
+
+   If your proxy endpoint is `tg.behnam.pro`, set one of:
+   ```fish
+   set -Ux TELEGRAM_MT_PROXY 'socks5://tg.behnam.pro:1080'
+   # or
+   set -Ux TELEGRAM_MT_PROXY 'http://tg.behnam.pro:443'
    ```
 
 The first run will prompt for login and a code. A session file is saved at `~/.config/paste-gram/mtproto.session` (override with `TELEGRAM_MT_SESSION`).
@@ -167,6 +212,13 @@ If `PASTEGRAM_HOSTNAME` or `PASTEGRAM_LAST_COMMAND` is set to `"true"`, those wi
 | `TELEGRAM_MT_API_ID`      | ✅ yes (MTProto) | — | Telegram API ID for personal account                        |
 | `TELEGRAM_MT_API_HASH`    | ✅ yes (MTProto) | — | Telegram API hash for personal account                      |
 | `TELEGRAM_MT_SESSION`     | ❌ no    | `$HOME/.config/paste-gram/mtproto` | Session path for MTProto auth                       |
+| `TELEGRAM_MT_PROXY`       | ❌ no    | —       | Proxy URL for MTProto (`socks5://`, `socks4://`, `http://`, `mtproxy://`) |
+| `TELEGRAM_MT_PROXY_TYPE`  | ❌ no    | `socks5` (if host set) | Split proxy config type (`socks5`, `socks4`, `http`, `mtproxy`) |
+| `TELEGRAM_MT_PROXY_HOST`  | ❌ no    | —       | Split proxy config host for MTProto                          |
+| `TELEGRAM_MT_PROXY_PORT`  | ❌ no    | —       | Split proxy config port for MTProto                          |
+| `TELEGRAM_MT_PROXY_USERNAME` | ❌ no | —       | Optional username for SOCKS/HTTP proxy                       |
+| `TELEGRAM_MT_PROXY_PASSWORD` | ❌ no | —       | Optional password for SOCKS/HTTP proxy                       |
+| `TELEGRAM_MT_PROXY_SECRET` | ❌ no   | —       | Required secret when proxy type is `mtproxy`                 |
 
 ### 🧭 Chat alias map
 
