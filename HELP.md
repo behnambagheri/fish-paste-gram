@@ -14,13 +14,15 @@ Set these environment variables (universal with `-Ux` recommended):
 - `TELEGRAM_API_URL` (optional, defaults to `https://api.telegram.org`)
 - `PASTEGRAM_HOSTNAME` (optional: `true|1` to prepend hostname)
 - `PASTEGRAM_LAST_COMMAND` (optional: `true|1` to prepend last command)
+- `PASTEGRAM_DEFAULT_MODE` (optional: `bot|mtproto`, default `bot`)
 - `PASTEGRAM_USE_MT` (optional: `true|1` to default to MTProto mode)
+- `TELEGRAM_MT_PYTHON` (optional: Python interpreter path; auto-detects `$HOME/.venvs/venv3.14/bin/python`)
 - `TELEGRAM_MT_API_ID` (required for MTProto)
 - `TELEGRAM_MT_API_HASH` (required for MTProto)
 - `TELEGRAM_MT_SESSION` (optional session path for MTProto)
 
 Dependencies: Fish 3+, `curl`, `jq`, `tar`, `split`, `stat`.
-MTProto dependencies: `python3`, `telethon` (recommended: `pipx install telethon`).
+MTProto dependencies: Python with `telethon`; proxy support additionally requires `python-socks[asyncio]`.
 
 ## Usage
 - Send a message: `ptg "Hello from Fish"` or `paste-gram "Hello from Fish"`
@@ -29,6 +31,8 @@ MTProto dependencies: `python3`, `telethon` (recommended: `pipx install telethon
 - Send a big file locally: `PTG_TMP=(mktemp); seq 1 5000 >$PTG_TMP; ptg $PTG_TMP`
 - Override destination chat for one call: `ptg --id @my_other_chat "Hello"`
 - Send via MTProto: `ptg --mtproto "Hello from my account"`
+- In MTProto mode, omitting `--id` sends to `me` (Saved Messages).
+- Force Bot API for one call with `ptg --bot "Hello from the bot"`.
 - `--id`/`-i` accepts numeric IDs, `@channel` usernames, or aliases from a JSON map; repeat the flag or comma-separate to send to multiple chats.
 - Include metadata: `PASTEGRAM_HOSTNAME=true PASTEGRAM_LAST_COMMAND=true ptg "payload"`
 
@@ -56,6 +60,7 @@ Completions: Fish completions are provided for both `paste-gram` and `ptg`, incl
 - Files over 50MB are compressed (`tar.gz`) and split into 49MB chunks; each chunk is sent sequentially.
 - Captions include absolute paths; API calls are HTML-formatted with timeouts for safety.
 - MTProto mode sends files directly (no bot size limits) and uses the Telethon client.
+- MTProto automatically prefers `$HOME/.venvs/venv3.14/bin/python` without requiring virtualenv activation.
 
 ## Troubleshooting
 - “TELEGRAM_TOKEN and TELEGRAM_CHAT_ID must be set”: export both vars.
@@ -64,7 +69,8 @@ Completions: Fish completions are provided for both `paste-gram` and `ptg`, incl
 - HTML rejected: ensure text does not contain raw `<`/`>` (the script sanitizes but confirm when pasting custom content).
 - MTProto “unable to open database file”: set `TELEGRAM_MT_SESSION` to a writable path.
 - MTProto “Cannot find any entity”: use `--id me`, `@username`, or ensure the chat is in your dialog list.
-- MTProto “requires the telethon package”: install with `pipx install telethon` (preferred) or `pip install telethon`.
+- MTProto “requires the telethon package”: install Telethon in the selected Python environment.
+- MTProto proxy warning about `python-socks`: install `python-socks[asyncio]` in the selected Python environment.
 
 ## Contributing quick tips
 - Keep Fish style: two-space indents, `set -l` for locals, kebab-case functions.

@@ -41,6 +41,7 @@ Send text or files to your Telegram chat directly from the Fish shell!
 - Telegram bot with a valid token
 - Your own chat ID (or a group chat ID where your bot is added)
 - Python 3 + `telethon` (only for MTProto personal-account mode). `pipx install telethon` recommended.
+- `python-socks[asyncio]` for MTProto proxy support.
 
 ---
 
@@ -61,6 +62,10 @@ set -Ux TELEGRAM_CHAT_ID '123456789'
 set -Ux TELEGRAM_API_URL 'https://api.telegram.org'
 set -Ux PASTEGRAM_HOSTNAME 'true'
 set -Ux PASTEGRAM_LAST_COMMAND 'true'
+# Optional default transport: bot or mtproto
+set -Ux PASTEGRAM_DEFAULT_MODE 'bot'
+# Optional explicit Python interpreter for MTProto
+set -Ux TELEGRAM_MT_PYTHON "$HOME/.venvs/venv3.14/bin/python"
 ```
 
 If you changed `TELEGRAM_API_URL` but requests still go to `api.telegram.org`, check which function file Fish is actually running:
@@ -102,9 +107,9 @@ Use MTProto to send messages as your own Telegram account (not a bot).
    ```fish
    pipx install telethon
    ```
-   For MTProto proxy support, also install PySocks in the same environment:
+   For MTProto proxy support, also install `python-socks` in the same environment:
    ```fish
-   pipx inject telethon pysocks
+   python3 -m pip install 'python-socks[asyncio]'
    ```
 3. Set env vars and send:
    ```fish
@@ -112,6 +117,9 @@ Use MTProto to send messages as your own Telegram account (not a bot).
    set -Ux TELEGRAM_MT_API_HASH 'your_api_hash_here'
    ptg --mtproto "Hello from my account"
    ```
+
+The plugin automatically prefers `$HOME/.venvs/venv3.14/bin/python` when it exists, so
+activating the virtual environment is not required. Override it with `TELEGRAM_MT_PYTHON`.
 
 4. Optional: route MTProto via proxy:
    ```fish
@@ -143,7 +151,25 @@ Use MTProto to send messages as your own Telegram account (not a bot).
 
 The first run will prompt for login and a code. A session file is saved at `~/.config/paste-gram/mtproto.session` (override with `TELEGRAM_MT_SESSION`).
 If you see “unable to open database file”, set `TELEGRAM_MT_SESSION` to a writable path.
-MTProto resolves chats by username/alias or existing dialogs; for Saved Messages use `--id me`. Numeric IDs may fail unless the chat is in your dialog list.
+MTProto resolves chats by username/alias or existing dialogs. When no `--id` is provided in MTProto mode,
+the destination defaults to your Saved Messages (`me`). Numeric IDs may fail unless the chat is in your dialog list.
+
+### Default mode and destination
+
+Set the default transport once:
+
+```fish
+set -Ux PASTEGRAM_DEFAULT_MODE 'mtproto'  # bot or mtproto
+```
+
+With that setting, this sends through your personal account to Saved Messages:
+
+```fish
+ptg "Personal default message"
+```
+
+Use `--bot` or `--bot-api` to force Bot API for one command. Use `--mtproto` or `--personal` to
+force MTProto for one command. The older `PASTEGRAM_USE_MT=true|false` variable remains supported.
 
 ---
 
@@ -180,7 +206,7 @@ ptg "Direct hello from fish"
 
 # Send as your personal account via MTProto
 ptg --mtproto "Personal hello from fish"
-ptg --mtproto --id me "Saved Messages"
+ptg --mtproto "Saved Messages"              # MTProto defaults to me when --id is omitted
 
 # Send to a different chat/channel without changing TELEGRAM_CHAT_ID (numeric, @username, or alias)
 ptg --id @my_other_chat "Hello from another place"
@@ -208,7 +234,9 @@ If `PASTEGRAM_HOSTNAME` or `PASTEGRAM_LAST_COMMAND` is set to `"true"`, those wi
 | `PASTEGRAM_HOSTNAME`      | ❌ no    | `false` | If `"true"`, includes hostname in message                    |
 | `PASTEGRAM_LAST_COMMAND`  | ❌ no    | `false` | If `"true"`, includes executed command line in message       |
 | `PASTEGRAM_ID_MAP`        | ❌ no    | `$HOME/.config/paste-gram/chat_ids.json` | Path to alias map for `--id` lookups |
-| `PASTEGRAM_USE_MT`        | ❌ no    | `false` | If `"true"`, default to MTProto mode                         |
+| `PASTEGRAM_DEFAULT_MODE`  | ❌ no    | `bot` | Default transport: `bot` or `mtproto` |
+| `PASTEGRAM_USE_MT`        | ❌ no    | `false` | Legacy compatibility toggle for default MTProto mode |
+| `TELEGRAM_MT_PYTHON`      | ❌ no    | auto-detected | Python interpreter used for MTProto |
 | `TELEGRAM_MT_API_ID`      | ✅ yes (MTProto) | — | Telegram API ID for personal account                        |
 | `TELEGRAM_MT_API_HASH`    | ✅ yes (MTProto) | — | Telegram API hash for personal account                      |
 | `TELEGRAM_MT_SESSION`     | ❌ no    | `$HOME/.config/paste-gram/mtproto` | Session path for MTProto auth                       |

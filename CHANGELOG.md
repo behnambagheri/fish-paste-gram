@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Configurable default transport with `PASTEGRAM_DEFAULT_MODE=bot|mtproto`.
+- MTProto defaults to `me` (Saved Messages) when `--id` is omitted.
+- Automatic preference for `$HOME/.venvs/venv3.14/bin/python`, with `TELEGRAM_MT_PYTHON` override.
+- `--bot`/`--bot-api` one-command transport override.
+
+### Fixed
+- MTProto proxy handling now uses the current Telethon `python-socks` dependency instead of requiring PySocks.
+- File-size detection now supports both GNU `stat` and macOS/BSD `stat` when Homebrew changes PATH precedence.
+
 ## [v1.6.0] - 2026-02-25
 
 ### Added

@@ -1,11 +1,21 @@
+function __paste_gram_file_size --argument-names file_path
+    if not test -f "$file_path"
+        echo "❌ File not found: $file_path" >&2
+        return 1
+    end
+
+    # Homebrew may put GNU stat ahead of macOS BSD stat in PATH, even on Darwin.
+    if stat --version >/dev/null 2>&1
+        stat -c %s "$file_path"
+    else
+        stat -f %z "$file_path"
+    end
+end
+
 function __paste_gram_mtproto_send --argument-names mode manifest file_path caption_path
     set -l mtproto_chat_ids $argv[5..-1]
     if test (count $mtproto_chat_ids) -eq 0
         echo "❌ MTProto requires a chat id (set TELEGRAM_CHAT_ID or pass --id)" >&2
-        return 1
-    end
-    if not command -sq python3; and not command -sq pipx
-        echo "❌ python3 or pipx is required for MTProto mode" >&2
         return 1
     end
     set -l api_id $TELEGRAM_MT_API_ID
@@ -127,19 +137,9 @@ def build_client_kwargs():
     if proxy_type not in {"socks5", "socks4", "http"}:
         raise RuntimeError(f"Unsupported MTProto proxy type '{proxy_type}'. Use socks5, socks4, http, or mtproxy.")
 
-    try:
-        import socks
-    except Exception:
-        raise RuntimeError("SOCKS/HTTP proxy requires PySocks. Install with: pipx inject telethon pysocks or pip install pysocks")
-
-    proxy_type_map = {
-        "socks5": socks.SOCKS5,
-        "socks4": socks.SOCKS4,
-        "http": socks.HTTP,
-    }
     if username:
-        return {"proxy": (proxy_type_map[proxy_type], host, port, True, username, password or "")}
-    return {"proxy": (proxy_type_map[proxy_type], host, port)}
+        return {"proxy": (proxy_type, host, port, True, username, password or "")}
+    return {"proxy": (proxy_type, host, port)}
 
 async def main():
     client_kwargs = build_client_kwargs()
@@ -178,15 +178,25 @@ except Exception as exc:
     sys.exit(1)
 '
 
-    set -l python_cmd python3
+    set -l python_cmd ""
     set -l python_args
-    set -l has_python3 "false"
-    set -l has_python3_telethon "false"
-    if command -sq python3
-        set has_python3 "true"
-        python3 -c "import telethon" >/dev/null 2>&1
+    set -l python_candidates
+    if set -q TELEGRAM_MT_PYTHON
+        if test -n "$TELEGRAM_MT_PYTHON"
+            set python_candidates "$TELEGRAM_MT_PYTHON"
+        end
+    end
+    # Prefer the standard Codex/Python project environment without requiring activation.
+    set python_candidates $python_candidates "$HOME/.venvs/venv3.14/bin/python" python3
+
+    for candidate in $python_candidates
+        if not test -x "$candidate"; and not command -sq "$candidate"
+            continue
+        end
+        "$candidate" -c "import telethon" >/dev/null 2>&1
         if test $status -eq 0
-            set has_python3_telethon "true"
+            set python_cmd "$candidate"
+            break
         end
     end
 
@@ -201,18 +211,23 @@ except Exception as exc:
         end
     end
 
-    if test $has_python3_telethon = "true"
-        set python_cmd python3
-        set python_args
-    else if test -n "$pipx_python"
+    if test -z "$python_cmd"; and test -n "$pipx_python"
         set python_cmd "$pipx_python"
         set python_args
-    else if command -sq pipx
+    else if test -z "$python_cmd"; and command -sq pipx
         set python_cmd pipx
         set python_args run --spec telethon python
-    else if test $has_python3 = "true"
-        echo "❌ python3 is available but missing telethon. Install with: pip install telethon" >&2
+    else if test -z "$python_cmd"
+        echo "❌ No Python interpreter with Telethon was found. Set TELEGRAM_MT_PYTHON or install Telethon." >&2
         return 1
+    end
+
+    if test -n "$mt_proxy_url"; or test -n "$mt_proxy_host"
+        $python_cmd $python_args -c "import python_socks" >/dev/null 2>&1
+        if test $status -ne 0
+            echo "❌ MTProto proxy requires python-socks. Install with: python3 -m pip install 'python-socks[asyncio]'" >&2
+            return 1
+        end
     end
 
     env PASTEGRAM_MT_MODE="$mode" \
@@ -237,7 +252,7 @@ except Exception as exc:
 end
 
 function paste-gram --description "Send text or file to Telegram" --argument cmdArg
-    set -l pastegram_version "v1.6.0"
+    set -l pastegram_version "v1.7.0"
     set -l token $TELEGRAM_TOKEN
     set -l chat_id $TELEGRAM_CHAT_ID
     set -l api_url "https://api.telegram.org"
@@ -250,6 +265,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
     set -l override_chat_ids
     set -l positional_args
     set -l id_map_path (set -q PASTEGRAM_ID_MAP; and echo $PASTEGRAM_ID_MAP; or echo "$HOME/.config/paste-gram/chat_ids.json")
+    set -l mode_override ""
     set -l use_mtproto "false"
 
     set -l i 1
@@ -265,13 +281,15 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 printf "  paste-gram /path/to/file              # send file (auto-chunk >50MB)\n"
                 printf "  paste-gram --id @other_chat \"msg\"    # override TELEGRAM_CHAT_ID (numeric, alias, repeatable)\n"
                 printf "  paste-gram --mtproto \"msg\"           # send via personal account (MTProto)\n"
+                printf "  paste-gram --bot \"msg\"               # force Bot API for one call\n"
                 printf "  PASTEGRAM_HOSTNAME=true PASTEGRAM_LAST_COMMAND=true paste-gram \"msg\"\n\n"
                 printf "Env vars (required): TELEGRAM_TOKEN, TELEGRAM_CHAT_ID\n"
                 printf "Env vars (optional): TELEGRAM_API_URL, PASTEGRAM_HOSTNAME=true|1, PASTEGRAM_LAST_COMMAND=true|1, PASTEGRAM_ID_MAP=<path to alias json>\n"
                 printf "MTProto env vars (required for --mtproto): TELEGRAM_MT_API_ID, TELEGRAM_MT_API_HASH\n"
-                printf "MTProto env vars (optional): TELEGRAM_MT_SESSION=<path> PASTEGRAM_USE_MT=true|false TELEGRAM_MT_PROXY=<url> or TELEGRAM_MT_PROXY_TYPE/HOST/PORT[/USERNAME/PASSWORD/SECRET]\n"
-                printf "Flags (optional): --id|-i <chat-id|alias> (repeatable), --mtproto/--personal\n"
-                printf "Dependencies: fish 3+, curl, jq, tar, split, stat, python3 (MTProto), telethon (MTProto), pysocks (MTProto proxy)\n"
+                printf "MTProto env vars (optional): TELEGRAM_MT_PYTHON=<path> TELEGRAM_MT_SESSION=<path> TELEGRAM_MT_PROXY=<url> or TELEGRAM_MT_PROXY_TYPE/HOST/PORT[/USERNAME/PASSWORD/SECRET]\n"
+                printf "Mode env vars: PASTEGRAM_DEFAULT_MODE=bot|mtproto; PASTEGRAM_USE_MT=true|false is supported for compatibility\n"
+                printf "Flags (optional): --id|-i <chat-id|alias> (repeatable), --mtproto/--personal, --bot/--bot-api\n"
+                printf "Dependencies: fish 3+, curl, jq, tar, split, stat, Python with telethon (MTProto), python-socks[asyncio] (MTProto proxy)\n"
                 return 0
             case "-v" "-V" "--version"
                 printf "paste-gram %s\n" $pastegram_version
@@ -286,7 +304,9 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                     return 1
                 end
             case "--mtproto" "--personal"
-                set use_mtproto "true"
+                set mode_override "mtproto"
+            case "--bot" "--bot-api"
+                set mode_override "bot"
             case "--id=*"
                 set -l raw_value (string replace -- "--id=" "" $arg)
                 set override_chat_ids $override_chat_ids (string split "," -- $raw_value)
@@ -304,16 +324,39 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
         set i (math "$i + 1")
     end
 
+    set -l default_mode "bot"
+    if set -q PASTEGRAM_DEFAULT_MODE
+        switch (string lower -- $PASTEGRAM_DEFAULT_MODE)
+            case "bot" "bot-api" "api"
+                set default_mode "bot"
+            case "mtproto" "personal"
+                set default_mode "mtproto"
+            case "*"
+                echo "❌ PASTEGRAM_DEFAULT_MODE must be bot or mtproto" >&2
+                return 1
+        end
+    end
+
+    if test $default_mode = "mtproto"
+        set use_mtproto "true"
+    end
+
     if set -q PASTEGRAM_USE_MT
         switch (string lower -- $PASTEGRAM_USE_MT)
             case "true" "1" "yes"
                 set use_mtproto "true"
             case "false" "0" "no"
-                # keep default
+                set use_mtproto "false"
             case "*"
                 echo "❌ PASTEGRAM_USE_MT must be true or false" >&2
                 return 1
         end
+    end
+
+    if test $mode_override = "mtproto"
+        set use_mtproto "true"
+    else if test $mode_override = "bot"
+        set use_mtproto "false"
     end
 
     if test $use_mtproto != "true"
@@ -322,7 +365,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
             return 1
         end
     end
-    if test (count $override_chat_ids) -eq 0; and test -z "$chat_id"
+    if test (count $override_chat_ids) -eq 0; and test -z "$chat_id"; and test $use_mtproto != "true"
         echo "❌ TELEGRAM_CHAT_ID must be set or pass --id" >&2
         return 1
     end
@@ -332,6 +375,8 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
     set -l to_resolve
     if test (count $override_chat_ids) -gt 0
         set to_resolve $override_chat_ids
+    else if test $use_mtproto = "true"
+        set to_resolve "me"
     else
         set to_resolve $chat_id
     end
@@ -463,10 +508,9 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 set -f file $positional_args[1]
                 set -l abs_path (realpath $file)
 
-                if test (uname) = "Darwin"
-                    set file_size (stat -f %z "$file")
-                else
-                    set file_size (stat -c %s "$file")
+                set file_size (__paste_gram_file_size "$file")
+                if test $status -ne 0
+                    return 1
                 end
 
 
@@ -494,10 +538,9 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                         set -l tar_file "$compressdir/$file_name.tgz"
                         tar czvf "$tar_file" -C $dir_name "$file_name"
 
-                        if test (uname) = "Darwin"
-                            set file_size (stat -f %z "$tar_file")
-                        else
-                            set file_size (stat -c %s "$tar_file")
+                        set file_size (__paste_gram_file_size "$tar_file")
+                        if test $status -ne 0
+                            return 1
                         end
 
                         set  file_size_mb (math "$file_size / 1024 / 1024")
