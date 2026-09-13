@@ -32,6 +32,10 @@ function __paste_gram_mtproto_send --argument-names mode manifest file_path capt
     set -l mt_proxy_username (set -q TELEGRAM_MT_PROXY_USERNAME; and echo $TELEGRAM_MT_PROXY_USERNAME; or echo "")
     set -l mt_proxy_password (set -q TELEGRAM_MT_PROXY_PASSWORD; and echo $TELEGRAM_MT_PROXY_PASSWORD; or echo "")
     set -l mt_proxy_secret (set -q TELEGRAM_MT_PROXY_SECRET; and echo $TELEGRAM_MT_PROXY_SECRET; or echo "")
+    set -l mt_delay_seconds "1.0"
+    if set -q PASTEGRAM_MT_DELAY_SECONDS
+        set mt_delay_seconds "$PASTEGRAM_MT_DELAY_SECONDS"
+    end
     mkdir -p (dirname "$session_path")
 
     set -l py_code 'import asyncio
@@ -59,6 +63,14 @@ chat_ids = [c for c in env("PASTEGRAM_MT_CHAT_IDS", "").split(",") if c]
 api_id = int(env("PASTEGRAM_MT_API_ID"))
 api_hash = env("PASTEGRAM_MT_API_HASH")
 session = env("PASTEGRAM_MT_SESSION")
+try:
+    send_delay = max(0.0, float(os.environ.get("PASTEGRAM_MT_DELAY_SECONDS", "1.0")))
+except ValueError:
+    raise RuntimeError("PASTEGRAM_MT_DELAY_SECONDS must be a non-negative number")
+
+async def pause_between_sends():
+    if send_delay > 0:
+        await asyncio.sleep(send_delay)
 
 async def resolve_entity(client, chat):
     try:
@@ -158,6 +170,7 @@ async def main():
                     with open(msg_file, "r", encoding="utf-8") as mf:
                         text = mf.read()
                     await client.send_message(entity, text, parse_mode="html")
+                    await pause_between_sends()
         elif mode == "file":
             if not file_path:
                 raise RuntimeError("Missing file path for MTProto send")
@@ -168,6 +181,7 @@ async def main():
             for chat in chat_ids:
                 entity = await resolve_entity(client, chat)
                 await client.send_file(entity, file_path, caption=caption, parse_mode="html")
+                await pause_between_sends()
         else:
             raise RuntimeError(f"Unknown MTProto mode: {mode}")
 
@@ -245,6 +259,7 @@ except Exception as exc:
         TELEGRAM_MT_PROXY_USERNAME="$mt_proxy_username" \
         TELEGRAM_MT_PROXY_PASSWORD="$mt_proxy_password" \
         TELEGRAM_MT_PROXY_SECRET="$mt_proxy_secret" \
+        PASTEGRAM_MT_DELAY_SECONDS="$mt_delay_seconds" \
         $python_cmd $python_args -c "$py_code"
     if test $status -ne 0
         return 1
@@ -267,6 +282,8 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
     set -l id_map_path (set -q PASTEGRAM_ID_MAP; and echo $PASTEGRAM_ID_MAP; or echo "$HOME/.config/paste-gram/chat_ids.json")
     set -l mode_override ""
     set -l use_mtproto "false"
+    set -l allow_mt_external "false"
+    set -l allow_mt_broadcast "false"
 
     set -l i 1
     set -l argc (count $argv)
@@ -286,7 +303,8 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 printf "Env vars (required): TELEGRAM_TOKEN, TELEGRAM_CHAT_ID\n"
                 printf "Env vars (optional): TELEGRAM_API_URL, PASTEGRAM_HOSTNAME=true|1, PASTEGRAM_LAST_COMMAND=true|1, PASTEGRAM_ID_MAP=<path to alias json>\n"
                 printf "MTProto env vars (required for --mtproto): TELEGRAM_MT_API_ID, TELEGRAM_MT_API_HASH\n"
-                printf "MTProto env vars (optional): TELEGRAM_MT_PYTHON=<path> TELEGRAM_MT_SESSION=<path> TELEGRAM_MT_PROXY=<url> or TELEGRAM_MT_PROXY_TYPE/HOST/PORT[/USERNAME/PASSWORD/SECRET]\n"
+                printf "MTProto env vars (optional): TELEGRAM_MT_PYTHON=<path> TELEGRAM_MT_SESSION=<path> TELEGRAM_MT_PROXY=<url> TELEGRAM_MT_DELAY_SECONDS=<seconds>\n"
+                printf "MTProto safety overrides: PASTEGRAM_MT_ALLOW_EXTERNAL=true PASTEGRAM_MT_ALLOW_BROADCAST=true\n"
                 printf "Mode env vars: PASTEGRAM_DEFAULT_MODE=bot|mtproto; PASTEGRAM_USE_MT=true|false is supported for compatibility\n"
                 printf "Flags (optional): --id|-i <chat-id|alias> (repeatable), --mtproto/--personal, --bot/--bot-api\n"
                 printf "Dependencies: fish 3+, curl, jq, tar, split, stat, Python with telethon (MTProto), python-socks[asyncio] (MTProto proxy)\n"
@@ -357,6 +375,44 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
         set use_mtproto "true"
     else if test $mode_override = "bot"
         set use_mtproto "false"
+    end
+
+    if set -q PASTEGRAM_MT_ALLOW_EXTERNAL
+        switch (string lower -- $PASTEGRAM_MT_ALLOW_EXTERNAL)
+            case "true" "1" "yes"
+                set allow_mt_external "true"
+            case "false" "0" "no"
+                set allow_mt_external "false"
+            case "*"
+                echo "❌ PASTEGRAM_MT_ALLOW_EXTERNAL must be true or false" >&2
+                return 1
+        end
+    end
+
+    if set -q PASTEGRAM_MT_ALLOW_BROADCAST
+        switch (string lower -- $PASTEGRAM_MT_ALLOW_BROADCAST)
+            case "true" "1" "yes"
+                set allow_mt_broadcast "true"
+            case "false" "0" "no"
+                set allow_mt_broadcast "false"
+            case "*"
+                echo "❌ PASTEGRAM_MT_ALLOW_BROADCAST must be true or false" >&2
+                return 1
+        end
+    end
+
+    if test $use_mtproto = "true"
+        if test (count $override_chat_ids) -gt 1; and test $allow_mt_broadcast != "true"
+            echo "❌ MTProto broadcast is blocked by default. Set PASTEGRAM_MT_ALLOW_BROADCAST=true only for intentional, consented multi-target sends." >&2
+            return 1
+        end
+        for requested_chat in $override_chat_ids
+            set -l requested_chat_lower (string lower -- $requested_chat)
+            if test $requested_chat_lower != "me"; and test $requested_chat_lower != "self"; and test $allow_mt_external != "true"
+                echo "❌ External MTProto targets are blocked by default. Use --id me, or set PASTEGRAM_MT_ALLOW_EXTERNAL=true only for an expected recipient." >&2
+                return 1
+            end
+        end
     end
 
     if test $use_mtproto != "true"

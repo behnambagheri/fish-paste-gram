@@ -11,6 +11,7 @@
 ### Fixed
 - MTProto proxy handling now uses the current Telethon `python-socks` dependency instead of requiring PySocks.
 - File-size detection now supports both GNU `stat` and macOS/BSD `stat` when Homebrew changes PATH precedence.
+- MTProto now blocks external and multi-target sends by default and throttles sends with a one-second delay.
 
 ## [v1.6.0] - 2026-02-25
 

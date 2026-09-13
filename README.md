@@ -154,6 +154,41 @@ If you see “unable to open database file”, set `TELEGRAM_MT_SESSION` to a wr
 MTProto resolves chats by username/alias or existing dialogs. When no `--id` is provided in MTProto mode,
 the destination defaults to your Saved Messages (`me`). Numeric IDs may fail unless the chat is in your dialog list.
 
+### Telegram policy guardrails
+
+Telegram's [Terms of Service](https://telegram.org/tos), [API Terms of Service](https://core.telegram.org/api/terms),
+and [Spam FAQ](https://telegram.org/faq_spam) prohibit spam, scams, unsolicited messages, abusive automation,
+and actions that violate other users' privacy or consent. The plugin is intentionally interactive and now applies
+these conservative local guardrails to MTProto mode:
+
+- `me` is the default destination.
+- External MTProto destinations are blocked unless explicitly enabled.
+- Multi-target MTProto sends are blocked unless explicitly enabled.
+- A one-second delay is inserted between MTProto sends by default.
+
+These checks reduce accidental misuse but cannot guarantee that Telegram will never restrict an account. Only send
+content to recipients who expect it, do not use this tool for scraping or bulk outreach, and use your own `api_id`.
+
+If an external recipient has explicitly consented to receive the message, enable it for that invocation or session:
+
+```fish
+PASTEGRAM_MT_ALLOW_EXTERNAL=true ptg --mtproto --id @expected_recipient "Expected message"
+```
+
+For intentional, consented multi-target delivery, enable both safeguards explicitly:
+
+```fish
+PASTEGRAM_MT_ALLOW_EXTERNAL=true \
+PASTEGRAM_MT_ALLOW_BROADCAST=true \
+ptg --mtproto --id @recipient_one --id @recipient_two "Expected message"
+```
+
+The default delay can be increased, but should not be disabled for routine personal-account use:
+
+```fish
+set -Ux PASTEGRAM_MT_DELAY_SECONDS 2
+```
+
 ### Default mode and destination
 
 Set the default transport once:
@@ -237,6 +272,9 @@ If `PASTEGRAM_HOSTNAME` or `PASTEGRAM_LAST_COMMAND` is set to `"true"`, those wi
 | `PASTEGRAM_DEFAULT_MODE`  | ❌ no    | `bot` | Default transport: `bot` or `mtproto` |
 | `PASTEGRAM_USE_MT`        | ❌ no    | `false` | Legacy compatibility toggle for default MTProto mode |
 | `TELEGRAM_MT_PYTHON`      | ❌ no    | auto-detected | Python interpreter used for MTProto |
+| `PASTEGRAM_MT_ALLOW_EXTERNAL` | ❌ no | `false` | Allow explicit non-`me` MTProto destinations |
+| `PASTEGRAM_MT_ALLOW_BROADCAST` | ❌ no | `false` | Allow multiple MTProto destinations in one invocation |
+| `PASTEGRAM_MT_DELAY_SECONDS` | ❌ no | `1.0` | Delay between MTProto sends/chunks |
 | `TELEGRAM_MT_API_ID`      | ✅ yes (MTProto) | — | Telegram API ID for personal account                        |
 | `TELEGRAM_MT_API_HASH`    | ✅ yes (MTProto) | — | Telegram API hash for personal account                      |
 | `TELEGRAM_MT_SESSION`     | ❌ no    | `$HOME/.config/paste-gram/mtproto` | Session path for MTProto auth                       |

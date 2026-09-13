@@ -20,6 +20,9 @@ Set these environment variables (universal with `-Ux` recommended):
 - `TELEGRAM_MT_API_ID` (required for MTProto)
 - `TELEGRAM_MT_API_HASH` (required for MTProto)
 - `TELEGRAM_MT_SESSION` (optional session path for MTProto)
+- `PASTEGRAM_MT_ALLOW_EXTERNAL` (optional safety override for an expected non-`me` recipient)
+- `PASTEGRAM_MT_ALLOW_BROADCAST` (optional safety override for intentional multi-target sends)
+- `PASTEGRAM_MT_DELAY_SECONDS` (optional delay between MTProto sends/chunks; default `1.0`)
 
 Dependencies: Fish 3+, `curl`, `jq`, `tar`, `split`, `stat`.
 MTProto dependencies: Python with `telethon`; proxy support additionally requires `python-socks[asyncio]`.
@@ -33,6 +36,8 @@ MTProto dependencies: Python with `telethon`; proxy support additionally require
 - Send via MTProto: `ptg --mtproto "Hello from my account"`
 - In MTProto mode, omitting `--id` sends to `me` (Saved Messages).
 - Force Bot API for one call with `ptg --bot "Hello from the bot"`.
+- External MTProto targets are blocked by default; set `PASTEGRAM_MT_ALLOW_EXTERNAL=true` only for an expected recipient.
+- Multiple MTProto targets are blocked by default; set `PASTEGRAM_MT_ALLOW_BROADCAST=true` only for intentional, consented delivery.
 - `--id`/`-i` accepts numeric IDs, `@channel` usernames, or aliases from a JSON map; repeat the flag or comma-separate to send to multiple chats.
 - Include metadata: `PASTEGRAM_HOSTNAME=true PASTEGRAM_LAST_COMMAND=true ptg "payload"`
 
@@ -61,6 +66,7 @@ Completions: Fish completions are provided for both `paste-gram` and `ptg`, incl
 - Captions include absolute paths; API calls are HTML-formatted with timeouts for safety.
 - MTProto mode sends files directly (no bot size limits) and uses the Telethon client.
 - MTProto automatically prefers `$HOME/.venvs/venv3.14/bin/python` without requiring virtualenv activation.
+- MTProto sends use a one-second delay by default to reduce accidental rapid sending.
 
 ## Troubleshooting
 - “TELEGRAM_TOKEN and TELEGRAM_CHAT_ID must be set”: export both vars.
@@ -71,6 +77,9 @@ Completions: Fish completions are provided for both `paste-gram` and `ptg`, incl
 - MTProto “Cannot find any entity”: use `--id me`, `@username`, or ensure the chat is in your dialog list.
 - MTProto “requires the telethon package”: install Telethon in the selected Python environment.
 - MTProto proxy warning about `python-socks`: install `python-socks[asyncio]` in the selected Python environment.
+
+Telegram policy: review the [Telegram Terms of Service](https://telegram.org/tos), [API Terms of Service](https://core.telegram.org/api/terms),
+and [Spam FAQ](https://telegram.org/faq_spam). The local guardrails reduce accidental misuse but cannot guarantee that Telegram will never restrict an account.
 
 ## Contributing quick tips
 - Keep Fish style: two-space indents, `set -l` for locals, kebab-case functions.
