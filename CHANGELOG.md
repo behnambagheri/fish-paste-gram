@@ -20,7 +20,7 @@
 
 ### Changed
 - `--help` now lists MTProto proxy environment variables.
-- MTProto now prefers a Python runtime with an installed Telethon environment (including pipx `telethon` venv) so injected dependencies like `pysocks` are honored.
+- MTProto now prefers a Python runtime with an installed Telethon environment (including pipx `telethon` venv) so proxy dependencies are honored.
 
 ## [v1.5.2] - 2026-02-25
 

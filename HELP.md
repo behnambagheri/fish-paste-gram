@@ -5,7 +5,7 @@
 
 ## Install
 - `fisher install behnambagheri/paste-gram`
-- Aliases: `ptg` (if you add one) and `ptg2` (from `conf.d/paste-gram-alias.fish`).
+- Alias: `ptg` (from `conf.d/paste-gram-alias.fish`).
 
 ## Configure
 Set these environment variables (universal with `-Ux` recommended):
@@ -83,4 +83,4 @@ and [Spam FAQ](https://telegram.org/faq_spam). The local guardrails reduce accid
 
 ## Contributing quick tips
 - Keep Fish style: two-space indents, `set -l` for locals, kebab-case functions.
-- Test both macOS (`stat -f`) and Linux (`stat -c`) paths for size detection and chunking.
+- Test both GNU and BSD `stat` implementations on macOS/Linux for size detection and chunking.
