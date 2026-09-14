@@ -7,6 +7,10 @@
 - MTProto defaults to `me` (Saved Messages) when `--id` is omitted.
 - Automatic preference for `$HOME/.venvs/venv3.14/bin/python`, with `TELEGRAM_MT_PYTHON` override.
 - `--bot`/`--bot-api` one-command transport override.
+- `-v`/`--verbose` diagnostics for effective configuration and Telegram responses across stdin, argument, and file sends.
+
+### Changed
+- `-v` is now the verbose flag; use `-V` or `--version` for version output.
 
 ### Fixed
 - MTProto proxy handling now uses the current Telethon `python-socks` dependency instead of requiring PySocks.

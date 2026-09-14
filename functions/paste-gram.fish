@@ -12,8 +12,41 @@ function __paste_gram_file_size --argument-names file_path
     end
 end
 
-function __paste_gram_mtproto_send --argument-names mode manifest file_path caption_path
-    set -l mtproto_chat_ids $argv[5..-1]
+function __paste_gram_bot_request --argument-names api_url token method target_label verbose
+    set -l curl_args $argv[6..-1]
+    if test "$verbose" = "true"
+        set -l api_url_display (string replace -r '\?.*$' '' -- "$api_url")
+        set api_url_display (string replace -r '://[^/@]+@' '://<redacted>@' -- "$api_url_display")
+        printf '[paste-gram verbose] request: POST %s/%s\n' "$api_url_display" "$method" >&2
+        printf '[paste-gram verbose] request target: %s\n' "$target_label" >&2
+        printf '[paste-gram verbose] request auth: Telegram bot token configured (redacted)\n' >&2
+    end
+
+    set -l response (curl -sS -X POST "$api_url/bot$token/$method" $curl_args)
+    set -l curl_status $status
+
+    if test "$verbose" = "true"
+        printf '[paste-gram verbose] Telegram response:\n' >&2
+        if test (count $response) -gt 0
+            printf '%s\n' "$response" | jq . >&2 2>/dev/null
+            if test $status -ne 0
+                printf '%s\n' "$response" >&2
+            end
+        else
+            printf '(empty response)\n' >&2
+        end
+    end
+
+    if test $curl_status -ne 0
+        echo "Error: Failed to connect to Telegram API!" >&2
+        return $curl_status
+    end
+
+    printf '%s\n' "$response"
+end
+
+function __paste_gram_mtproto_send --argument-names mode manifest file_path caption_path verbose
+    set -l mtproto_chat_ids $argv[6..-1]
     if test (count $mtproto_chat_ids) -eq 0
         echo "❌ MTProto requires a chat id (set TELEGRAM_CHAT_ID or pass --id)" >&2
         return 1
@@ -39,6 +72,7 @@ function __paste_gram_mtproto_send --argument-names mode manifest file_path capt
     mkdir -p (dirname "$session_path")
 
     set -l py_code 'import asyncio
+import json
 import os
 import sys
 from urllib.parse import parse_qs, unquote, urlparse
@@ -153,8 +187,37 @@ def build_client_kwargs():
         return {"proxy": (proxy_type, host, port, True, username, password or "")}
     return {"proxy": (proxy_type, host, port)}
 
+def verbose_response(label, response):
+    if os.environ.get("PASTEGRAM_MT_VERBOSE") != "true":
+        return
+    print(f"[paste-gram verbose] Telegram response ({label}):", file=sys.stderr)
+    try:
+        payload = response.to_dict() if hasattr(response, "to_dict") else response
+        print(json.dumps(payload, default=str, indent=2, ensure_ascii=False), file=sys.stderr)
+    except Exception:
+        print(str(response), file=sys.stderr)
+
+def verbose_proxy_description():
+    raw_url = os.environ.get("TELEGRAM_MT_PROXY", "").strip()
+    if raw_url:
+        parsed = urlparse(raw_url)
+        host = parsed.hostname or "?"
+        port = parsed.port or "?"
+        return f"{parsed.scheme or 'configured'}://{host}:{port} (credentials/secret redacted)"
+    host = os.environ.get("TELEGRAM_MT_PROXY_HOST", "").strip()
+    if host:
+        proxy_type = _normalize_proxy_type(os.environ.get("TELEGRAM_MT_PROXY_TYPE", "socks5"))
+        port = os.environ.get("TELEGRAM_MT_PROXY_PORT", "").strip() or "?"
+        return f"{proxy_type}://{host}:{port} (credentials/secret redacted)"
+    return "not configured"
+
 async def main():
     client_kwargs = build_client_kwargs()
+    if os.environ.get("PASTEGRAM_MT_VERBOSE") == "true":
+        print(f"[paste-gram verbose] MTProto proxy: {verbose_proxy_description()}", file=sys.stderr)
+        print(f"[paste-gram verbose] MTProto session: {session}", file=sys.stderr)
+        chat_target_summary = ", ".join(chat_ids)
+        print(f"[paste-gram verbose] MTProto target(s): {chat_target_summary}", file=sys.stderr)
     async with TelegramClient(session, api_id, api_hash, **client_kwargs) as client:
         await client.start()
         if mode == "message":
@@ -169,7 +232,8 @@ async def main():
                 for msg_file in message_files:
                     with open(msg_file, "r", encoding="utf-8") as mf:
                         text = mf.read()
-                    await client.send_message(entity, text, parse_mode="html")
+                    sent_message = await client.send_message(entity, text, parse_mode="html")
+                    verbose_response("send_message", sent_message)
                     await pause_between_sends()
         elif mode == "file":
             if not file_path:
@@ -180,7 +244,8 @@ async def main():
                     caption = cf.read()
             for chat in chat_ids:
                 entity = await resolve_entity(client, chat)
-                await client.send_file(entity, file_path, caption=caption, parse_mode="html")
+                sent_message = await client.send_file(entity, file_path, caption=caption, parse_mode="html")
+                verbose_response("send_file", sent_message)
                 await pause_between_sends()
         else:
             raise RuntimeError(f"Unknown MTProto mode: {mode}")
@@ -236,6 +301,14 @@ except Exception as exc:
         return 1
     end
 
+    if test "$verbose" = "true"
+        printf '[paste-gram verbose] MTProto Python runtime: %s' "$python_cmd" >&2
+        if test (count $python_args) -gt 0
+            printf ' %s' (string join ' ' -- $python_args) >&2
+        end
+        printf '\n' >&2
+    end
+
     if test -n "$mt_proxy_url"; or test -n "$mt_proxy_host"
         $python_cmd $python_args -c "import python_socks" >/dev/null 2>&1
         if test $status -ne 0
@@ -260,6 +333,7 @@ except Exception as exc:
         TELEGRAM_MT_PROXY_PASSWORD="$mt_proxy_password" \
         TELEGRAM_MT_PROXY_SECRET="$mt_proxy_secret" \
         PASTEGRAM_MT_DELAY_SECONDS="$mt_delay_seconds" \
+        PASTEGRAM_MT_VERBOSE="$verbose" \
         $python_cmd $python_args -c "$py_code"
     if test $status -ne 0
         return 1
@@ -282,6 +356,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
     set -l id_map_path (set -q PASTEGRAM_ID_MAP; and echo $PASTEGRAM_ID_MAP; or echo "$HOME/.config/paste-gram/chat_ids.json")
     set -l mode_override ""
     set -l use_mtproto "false"
+    set -l verbose "false"
     set -l allow_mt_external "false"
     set -l allow_mt_broadcast "false"
 
@@ -299,6 +374,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 printf "  paste-gram --id @other_chat \"msg\"    # override TELEGRAM_CHAT_ID (numeric, alias, repeatable)\n"
                 printf "  paste-gram --mtproto \"msg\"           # send via personal account (MTProto)\n"
                 printf "  paste-gram --bot \"msg\"               # force Bot API for one call\n"
+                printf "  paste-gram -v \"msg\"                 # show effective config and Telegram responses\n"
                 printf "  PASTEGRAM_HOSTNAME=true PASTEGRAM_LAST_COMMAND=true paste-gram \"msg\"\n\n"
                 printf "Env vars (required): TELEGRAM_TOKEN, TELEGRAM_CHAT_ID\n"
                 printf "Env vars (optional): TELEGRAM_API_URL, PASTEGRAM_HOSTNAME=true|1, PASTEGRAM_LAST_COMMAND=true|1, PASTEGRAM_ID_MAP=<path to alias json>\n"
@@ -306,10 +382,13 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 printf "MTProto env vars (optional): TELEGRAM_MT_PYTHON=<path> TELEGRAM_MT_SESSION=<path> TELEGRAM_MT_PROXY=<url> TELEGRAM_MT_DELAY_SECONDS=<seconds>\n"
                 printf "MTProto safety overrides: PASTEGRAM_MT_ALLOW_EXTERNAL=true PASTEGRAM_MT_ALLOW_BROADCAST=true\n"
                 printf "Mode env vars: PASTEGRAM_DEFAULT_MODE=bot|mtproto; PASTEGRAM_USE_MT=true|false is supported for compatibility\n"
-                printf "Flags (optional): --id|-i <chat-id|alias> (repeatable), --mtproto/--personal, --bot/--bot-api\n"
+                printf "Flags (optional): -v|--verbose, --id|-i <chat-id|alias> (repeatable), --mtproto/--personal, --bot/--bot-api\n"
+                printf "Version: -V|--version\n"
                 printf "Dependencies: fish 3+, curl, jq, tar, split, stat, Python with telethon (MTProto), python-socks[asyncio] (MTProto proxy)\n"
                 return 0
-            case "-v" "-V" "--version"
+            case "-v" "--verbose"
+                set verbose "true"
+            case "-V" "--version"
                 printf "paste-gram %s\n" $pastegram_version
                 return 0
             case "-i" "--id" "-id"
@@ -399,6 +478,106 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 echo "❌ PASTEGRAM_MT_ALLOW_BROADCAST must be true or false" >&2
                 return 1
         end
+    end
+
+    set -l mode_label "Bot API"
+    if test $use_mtproto = "true"
+        set mode_label "MTProto (personal account)"
+    end
+
+    set -l input_kind "none"
+    set -l input_detail "no input"
+    if isatty stdin
+        if test -n "$positional_args"
+            if test -f "$positional_args[1]"
+                set input_kind "file"
+                set input_detail "$positional_args[1]"
+            else
+                set input_kind "argument"
+                set input_detail "argument text (content hidden)"
+            end
+        end
+    else
+        set input_kind "stdin"
+        set input_detail "pipe/stdin"
+    end
+
+    set -l requested_target_display "$chat_id"
+    set -l target_source "TELEGRAM_CHAT_ID"
+    if test (count $override_chat_ids) -gt 0
+        set requested_target_display (string join ', ' -- $override_chat_ids)
+        set target_source "command-line --id"
+    else if test $use_mtproto = "true"
+        set requested_target_display "me (default Saved Messages)"
+        set target_source "MTProto default"
+    end
+
+    set -l include_hostname (set -q PASTEGRAM_HOSTNAME; and echo $PASTEGRAM_HOSTNAME; or echo "false")
+    set -l include_command (set -q PASTEGRAM_LAST_COMMAND; and echo $PASTEGRAM_LAST_COMMAND; or echo "false")
+
+    if test "$verbose" = "true"
+        printf '[paste-gram verbose] version: %s\n' "$pastegram_version" >&2
+        printf '[paste-gram verbose] mode: %s\n' "$mode_label" >&2
+        printf '[paste-gram verbose] mode selection: default=%s override=%s\n' "$default_mode" (test -n "$mode_override"; and echo "$mode_override"; or echo "none") >&2
+        printf '[paste-gram verbose] input: %s (%s)\n' "$input_kind" "$input_detail" >&2
+        printf '[paste-gram verbose] requested target(s): %s\n' "$requested_target_display" >&2
+        printf '[paste-gram verbose] target source: %s\n' "$target_source" >&2
+        set -l api_url_display (string replace -r '\?.*$' '' -- "$api_url")
+        set api_url_display (string replace -r '://[^/@]+@' '://<redacted>@' -- "$api_url_display")
+        if test "$use_mtproto" = "true"
+            printf '[paste-gram verbose] Bot API URL (not used in MTProto): %s\n' "$api_url_display" >&2
+        else
+            printf '[paste-gram verbose] API URL: %s\n' "$api_url_display" >&2
+        end
+        if test "$use_mtproto" = "true"
+            if set -q TELEGRAM_MT_PROXY; and test -n "$TELEGRAM_MT_PROXY"
+                set -l mt_proxy_type (string split -m 1 ':' -- "$TELEGRAM_MT_PROXY")[1]
+                printf '[paste-gram verbose] proxy: %s URL configured (credentials/secret redacted)\n' "$mt_proxy_type" >&2
+            else if set -q TELEGRAM_MT_PROXY_HOST; and test -n "$TELEGRAM_MT_PROXY_HOST"
+                set -l mt_proxy_type "socks5"
+                if set -q TELEGRAM_MT_PROXY_TYPE; and test -n "$TELEGRAM_MT_PROXY_TYPE"
+                    set mt_proxy_type (string lower -- "$TELEGRAM_MT_PROXY_TYPE")
+                end
+                set -l mt_proxy_port "?"
+                if set -q TELEGRAM_MT_PROXY_PORT; and test -n "$TELEGRAM_MT_PROXY_PORT"
+                    set mt_proxy_port "$TELEGRAM_MT_PROXY_PORT"
+                end
+                printf '[paste-gram verbose] proxy: %s://%s:%s (credentials/secret redacted)\n' "$mt_proxy_type" "$TELEGRAM_MT_PROXY_HOST" "$mt_proxy_port" >&2
+            else
+                printf '[paste-gram verbose] proxy: not configured\n' >&2
+            end
+            set -l mt_session_path (set -q TELEGRAM_MT_SESSION; and echo $TELEGRAM_MT_SESSION; or echo "$HOME/.config/paste-gram/mtproto")
+            set -l mt_delay "1.0"
+            if set -q PASTEGRAM_MT_DELAY_SECONDS
+                set mt_delay "$PASTEGRAM_MT_DELAY_SECONDS"
+            end
+            printf '[paste-gram verbose] MTProto session: %s\n' "$mt_session_path" >&2
+            printf '[paste-gram verbose] MTProto delay: %ss\n' "$mt_delay" >&2
+            if set -q TELEGRAM_MT_API_ID; and set -q TELEGRAM_MT_API_HASH
+                printf '[paste-gram verbose] MTProto API credentials: configured (redacted)\n' >&2
+            else
+                printf '[paste-gram verbose] MTProto API credentials: missing\n' >&2
+            end
+        else
+            if set -q TELEGRAM_TOKEN; and test -n "$TELEGRAM_TOKEN"
+                printf '[paste-gram verbose] bot token: configured (redacted)\n' >&2
+            else
+                printf '[paste-gram verbose] bot token: missing\n' >&2
+            end
+            set -l proxy_env_names
+            for proxy_var in HTTPS_PROXY HTTP_PROXY ALL_PROXY https_proxy http_proxy all_proxy
+                if set -q $proxy_var
+                    set proxy_env_names $proxy_env_names $proxy_var
+                end
+            end
+            if test (count $proxy_env_names) -gt 0
+                printf '[paste-gram verbose] curl proxy environment: %s (values hidden)\n' (string join ', ' -- $proxy_env_names) >&2
+            else
+                printf '[paste-gram verbose] curl proxy environment: not configured\n' >&2
+            end
+        end
+        printf '[paste-gram verbose] hostname metadata: %s\n' "$include_hostname" >&2
+        printf '[paste-gram verbose] last-command metadata: %s\n' "$include_command" >&2
     end
 
     if test $use_mtproto = "true"
@@ -510,14 +689,15 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
     set -l color_reset (set_color normal)
     echo "$color_info→ Target chat IDs:" $chat_labels $color_reset
 
-    set -l include_hostname (set -q PASTEGRAM_HOSTNAME; and echo $PASTEGRAM_HOSTNAME; or echo "false")
-    set -l include_command (set -q PASTEGRAM_LAST_COMMAND; and echo $PASTEGRAM_LAST_COMMAND; or echo "false")
-
     set -l m_hostname (hostname)
 
     #sync_history
     history --merge
     set -l full_cmd (history --max 2 | head -n 1)
+
+    if test "$verbose" = "true"
+        printf '[paste-gram verbose] resolved target(s): %s\n' (string join ', ' -- $chat_labels) >&2
+    end
 
     set -l head_message_text_file (mktemp)
     set -l body_meesage_text_file (mktemp)
@@ -569,6 +749,11 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                     return 1
                 end
 
+                if test "$verbose" = "true"
+                    printf '[paste-gram verbose] file path: %s\n' (realpath "$file") >&2
+                    printf '[paste-gram verbose] file size: %s bytes\n' "$file_size" >&2
+                end
+
 
                 set  file_size_mb (math "$file_size / 1024 / 1024")
                 set  file_name (basename "$file")
@@ -587,6 +772,9 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 if test "$file_size_mb" -gt 50
                     if test $use_mtproto = "true"
                         echo -e "MTProto mode: sending file without Bot API size limits."
+                        if test "$verbose" = "true"
+                            printf '[paste-gram verbose] file delivery: direct MTProto upload\n' >&2
+                        end
                     else
                         # Compress the file first
                         echo -e "Compress the file first."
@@ -601,6 +789,9 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
 
                         set  file_size_mb (math "$file_size / 1024 / 1024")
                         echo -e "File size after compress: $file_size_mb MB"
+                        if test "$verbose" = "true"
+                            printf '[paste-gram verbose] file delivery: compressed then split into Bot API chunks\n' >&2
+                        end
                         set  file $tar_file
                         set  file_name (basename "$tar_file")
                         set  abs_path (realpath $tar_file)
@@ -610,7 +801,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
 
                 if test "$file_size_mb" -gt 50
                     if test $use_mtproto = "true"
-                        __paste_gram_mtproto_send "file" "" "$file" "$message_text_file" $chat_ids
+                        __paste_gram_mtproto_send "file" "" "$file" "$message_text_file" "$verbose" $chat_ids
                     else
                         echo -e "Chuck the compress file."
                         split -b 49MB -d "$file" $splitdir/"$file_name"_
@@ -620,18 +811,19 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                                 set -l target_chat_id $chat_ids[$idx]
                                 set -l target_label $chat_labels[$idx]
                                 echo "$color_info→ sending chunk "(basename $i)" to $target_label$color_reset"
-                                set response (curl -s -X POST "$api_url"/bot$token/"sendDocument" \
+                                set response (__paste_gram_bot_request "$api_url" "$token" "sendDocument" "$target_label" "$verbose" \
                                     --form-string chat_id="$target_chat_id" \
                                     -F document=@"$i" \
                                     -F caption="$(cat $message_text_file)" \
                                     -F parse_mode="HTML" \
                                     --connect-timeout 10 \
                                     --max-time 30)
+                                set request_status $status
 
                                 set -l status_ok (echo $response | jq .ok)
                                 set -l status_description (echo $response | jq .description)
 
-                                if test $status -ne 0
+                                if test $request_status -ne 0
                                     echo "Error: Failed to connect to Telegram API!"
                                     return 1
                                 end
@@ -647,25 +839,30 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                     end
                 else
 
+                    if test "$verbose" = "true"
+                        printf '[paste-gram verbose] file delivery: single upload\n' >&2
+                    end
+
                     if test $use_mtproto = "true"
-                        __paste_gram_mtproto_send "file" "" "$file" "$message_text_file" $chat_ids
+                        __paste_gram_mtproto_send "file" "" "$file" "$message_text_file" "$verbose" $chat_ids
                     else
                         for idx in (seq (count $chat_ids))
                             set -l target_chat_id $chat_ids[$idx]
                             set -l target_label $chat_labels[$idx]
                             echo "$color_info→ sending file $file_name to $target_label$color_reset"
-                            set response (curl -s -X POST "$api_url"/bot$token/"sendDocument" \
+                            set response (__paste_gram_bot_request "$api_url" "$token" "sendDocument" "$target_label" "$verbose" \
                                 --form-string chat_id="$target_chat_id" \
                                 -F document=@"$file" \
                                 -F caption="$(cat $message_text_file)" \
                                 -F parse_mode="HTML" \
                                 --connect-timeout 10 \
                                 --max-time 30)
+                            set request_status $status
 
                             set -l status_ok (echo $response | jq .ok)
                             set -l status_description (echo $response | jq .description)
 
-                            if test $status -ne 0
+                            if test $request_status -ne 0
                                 echo "Error: Failed to connect to Telegram API!"
                                 return 1
                             end
@@ -723,7 +920,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 if test $use_mtproto = "true"
                     set -l mtproto_manifest (mktemp)
                     printf "%s\n" $splitdir/chunk_* > "$mtproto_manifest"
-                    __paste_gram_mtproto_send "message" "$mtproto_manifest" "" "" $chat_ids
+                    __paste_gram_mtproto_send "message" "$mtproto_manifest" "" "" "$verbose" $chat_ids
                     rm -f "$mtproto_manifest"
                 else
                     # Send each chunk
@@ -732,14 +929,15 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                             set -l target_chat_id $chat_ids[$idx]
                             set -l target_label $chat_labels[$idx]
                             echo "$color_info→ sending chunk "(basename $chunk)" to $target_label$color_reset"
-                            set response (curl -s -X POST "$api_url/bot$token/sendMessage" \
+                            set response (__paste_gram_bot_request "$api_url" "$token" "sendMessage" "$target_label" "$verbose" \
                                 --data-urlencode chat_id="$target_chat_id" \
                                 --data-urlencode text="$(cat $message_text_file)" \
                                 -d parse_mode="HTML" \
                                 --connect-timeout 10 \
                                 --max-time 30)
+                            set request_status $status
 
-                            if test $status -ne 0
+                            if test $request_status -ne 0
                                 echo "Error: Failed to connect to Telegram API!"
                                 return 1
                             end
@@ -799,7 +997,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
         if test $use_mtproto = "true"
             set -l mtproto_manifest (mktemp)
             printf "%s\n" $splitdir/chunk_* > "$mtproto_manifest"
-            __paste_gram_mtproto_send "message" "$mtproto_manifest" "" "" $chat_ids
+            __paste_gram_mtproto_send "message" "$mtproto_manifest" "" "" "$verbose" $chat_ids
             rm -f "$mtproto_manifest"
         else
             # Send each chunk
@@ -808,15 +1006,16 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                     set -l target_chat_id $chat_ids[$idx]
                     set -l target_label $chat_labels[$idx]
                     echo "$color_info→ sending chunk "(basename $chunk)" to $target_label$color_reset"
-                    set response (curl -s -X POST "$api_url/bot$token/sendMessage" \
+                    set response (__paste_gram_bot_request "$api_url" "$token" "sendMessage" "$target_label" "$verbose" \
                         --data-urlencode chat_id="$target_chat_id" \
                         --data-urlencode text="$(cat $chunk)" \
                         -d parse_mode="HTML" \
                         --connect-timeout 10 \
                         --max-time 30)
+                    set request_status $status
 
 
-                    if test $status -ne 0
+                    if test $request_status -ne 0
                         echo "Error: Failed to connect to Telegram API!"
                         return 1
                     end

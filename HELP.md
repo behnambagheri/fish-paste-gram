@@ -36,6 +36,8 @@ MTProto dependencies: Python with `telethon`; proxy support additionally require
 - Send via MTProto: `ptg --mtproto "Hello from my account"`
 - In MTProto mode, omitting `--id` sends to `me` (Saved Messages).
 - Force Bot API for one call with `ptg --bot "Hello from the bot"`.
+- Show diagnostics and the Telegram response with `ptg -v`, `echo "from pipe" | ptg -v`, or `ptg -v /path/to/file.log`.
+- Use `-V`/`--version` for version output; `-v`/`--verbose` is reserved for diagnostics.
 - External MTProto targets are blocked by default; set `PASTEGRAM_MT_ALLOW_EXTERNAL=true` only for an expected recipient.
 - Multiple MTProto targets are blocked by default; set `PASTEGRAM_MT_ALLOW_BROADCAST=true` only for intentional, consented delivery.
 - `--id`/`-i` accepts numeric IDs, `@channel` usernames, or aliases from a JSON map; repeat the flag or comma-separate to send to multiple chats.
@@ -64,6 +66,7 @@ Completions: Fish completions are provided for both `paste-gram` and `ptg`, incl
 - Text is wrapped in `<pre>` and split into ~3.8KB chunks to satisfy Telegram limits.
 - Files over 50MB are compressed (`tar.gz`) and split into 49MB chunks; each chunk is sent sequentially.
 - Captions include absolute paths; API calls are HTML-formatted with timeouts for safety.
+- Verbose mode reports the effective mode, input, resolved target, API URL, proxy status, runtime settings, and raw/structured Telegram response. Secrets are redacted.
 - MTProto mode sends files directly (no bot size limits) and uses the Telethon client.
 - MTProto automatically prefers `$HOME/.venvs/venv3.14/bin/python` without requiring virtualenv activation.
 - MTProto sends use a one-second delay by default to reduce accidental rapid sending.

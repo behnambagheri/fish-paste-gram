@@ -27,6 +27,7 @@ Send text or files to your Telegram chat directly from the Fish shell!
 - 🧭 Built-in Fish completions for commands and `--id` aliases
 - 🆔 Target either numeric chat IDs or usernames (channels) with `--id` / `TELEGRAM_CHAT_ID`
 - 👤 Optional MTProto mode to send as your personal account
+- 🔎 Verbose diagnostics with `-v`, including the effective mode, endpoint/proxy, and Telegram response
 
 ---
 
@@ -253,9 +254,15 @@ ptg --id friend1,friend2 "Hello again"
 
 # Send a file with optional caption
 ptg ~/Documents/log.txt
+
+# Show effective configuration and Telegram responses (works with stdin, text, and files)
+echo "debug me" | ptg -v
+ptg -v ~/Documents/log.txt
+ptg -v --id @my_other_chat "debug me"
 ```
 
 If `PASTEGRAM_HOSTNAME` or `PASTEGRAM_LAST_COMMAND` is set to `"true"`, those will be prepended to your message or file caption.
+Use `-v`/`--verbose` with any send form to print the selected mode, input type, resolved target, API URL, proxy status, runtime settings, and the Telegram response. Secrets such as bot tokens, API hashes, proxy passwords, and MTProxy secrets are redacted. `-V`/`--version` prints only the version.
 
 ---
 
