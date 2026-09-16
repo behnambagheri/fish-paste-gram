@@ -16,6 +16,9 @@
 - File captions are now compact and prettier: redundant headers are removed, directory names are not repeated, and home-directory paths use `~/…`.
 - Captions now use plain Host, Command, PATH, and FILE labels without emojis or separator lines; command and path values are displayed on their own lines.
 - `PASTEGRAM_INCLUDE_PATH=false` can omit generated file or directory paths from captions.
+- Inline `--hostname`, `--last-command`, and `--include-path` switches can override their environment defaults for one command.
+- Generated caption sections now have consistent blank-line spacing.
+- Fish completions no longer suggest files or directories when `ptg` or `paste-gram` is used after a pipe.
 
 ### Fixed
 - MTProto proxy handling now uses the current Telethon `python-socks` dependency instead of requiring PySocks.

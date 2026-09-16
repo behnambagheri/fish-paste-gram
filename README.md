@@ -267,6 +267,9 @@ ptg -m "Updated configuration" ~/Documents/project
 # Open $GIT_EDITOR, $VISUAL, $EDITOR, or vi to write a long caption
 ptg -m ~/Documents/project
 
+# Override metadata defaults for one command
+ptg --last-command false --hostname true --include-path false ~/Documents/project
+
 # Show effective configuration and Telegram responses (works with stdin, text, and files)
 echo "debug me" | ptg -v
 ptg -v ~/Documents/log.txt
@@ -275,6 +278,7 @@ ptg -v --id @my_other_chat "debug me"
 
 If `PASTEGRAM_HOSTNAME` or `PASTEGRAM_LAST_COMMAND` is set to `"true"`, those will be prepended to your message or file caption. `PASTEGRAM_INCLUDE_PATH` defaults to `true`; set it to `false` to omit the file or directory path. File captions omit redundant labels, shorten paths inside `$HOME` to `~/…`, and show directories using the source path while Telegram displays the archive filename.
 Use `-m`/`--message` with inline text for a short caption. If the option has no text value, paste-gram opens `$GIT_EDITOR`, then `$VISUAL`, then `$EDITOR`, then `vi`; the saved text is added above the generated metadata under a bold `Caption:` title. Caption text is escaped as plain text for Telegram HTML mode. If the complete document caption is too long for Telegram, the full user caption is sent as text before the file and only the compact metadata remains attached to the document.
+Use `--hostname`, `--last-command`, and `--include-path` with `true` or `false` to override `PASTEGRAM_HOSTNAME`, `PASTEGRAM_LAST_COMMAND`, and `PASTEGRAM_INCLUDE_PATH` for one command. The `--include-hostname` and `--include-command` spellings are accepted as aliases. The inline values take precedence over the environment variables.
 Use `-v`/`--verbose` with any send form to print the selected mode, input type, resolved target, API URL, proxy status, runtime settings, and the Telegram response. Secrets such as bot tokens, API hashes, proxy passwords, and MTProxy secrets are redacted. `-V`/`--version` prints only the version.
 
 ---

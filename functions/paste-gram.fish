@@ -32,6 +32,18 @@ function __paste_gram_display_path --argument-names path
     end
 end
 
+function __paste_gram_normalize_bool --argument-names value setting_name
+    switch (string lower -- "$value")
+        case "true" "1" "yes"
+            printf 'true\n'
+        case "false" "0" "no"
+            printf 'false\n'
+        case "*"
+            echo "❌ $setting_name must be true or false" >&2
+            return 1
+    end
+end
+
 function __paste_gram_open_editor --argument-names file_path
     set -l editor_command ""
     if set -q GIT_EDITOR; and test -n "$GIT_EDITOR"
@@ -470,6 +482,9 @@ function paste-gram --description "Send text, files, or directories to Telegram"
     set -l positional_args
     set -l id_map_path (set -q PASTEGRAM_ID_MAP; and echo $PASTEGRAM_ID_MAP; or echo "$HOME/.config/paste-gram/chat_ids.json")
     set -l mode_override ""
+    set -l hostname_override ""
+    set -l command_override ""
+    set -l path_override ""
     set -l use_mtproto "false"
     set -l verbose "false"
     set -l allow_mt_external "false"
@@ -502,12 +517,39 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                 printf "MTProto env vars (optional): TELEGRAM_MT_PYTHON=<path> TELEGRAM_MT_SESSION=<path> TELEGRAM_MT_PROXY=<url> TELEGRAM_MT_DELAY_SECONDS=<seconds>\n"
                 printf "MTProto safety overrides: PASTEGRAM_MT_ALLOW_EXTERNAL=true PASTEGRAM_MT_ALLOW_BROADCAST=true\n"
                 printf "Mode env vars: PASTEGRAM_DEFAULT_MODE=bot|mtproto; PASTEGRAM_USE_MT=true|false is supported for compatibility\n"
-                printf "Flags (optional): -m|--message [caption], -v|--verbose, --id|-i <chat-id|alias> (repeatable), --mtproto/--personal, --bot/--bot-api\n"
+                printf "Flags (optional): -m|--message [caption], --hostname <true|false>, --last-command <true|false>, --include-path <true|false>, -v|--verbose, --id|-i <chat-id|alias> (repeatable), --mtproto/--personal, --bot/--bot-api\n"
                 printf "Version: -V|--version\n"
                 printf "Dependencies: fish 3+, curl, jq, tar, split, stat, Python with telethon (MTProto), python-socks[asyncio] (MTProto proxy)\n"
                 return 0
             case "-v" "--verbose"
                 set verbose "true"
+            case "--hostname" "--include-hostname"
+                if test (math "$i + 1") -gt $argc
+                    echo "❌ $arg requires true or false" >&2
+                    return 1
+                end
+                set hostname_override $argv[(math "$i + 1")]
+                set i (math "$i + 1")
+            case "--hostname=*" "--include-hostname=*"
+                set hostname_override (string replace -r '^--(include-)?hostname=' '' -- "$arg")
+            case "--last-command" "--include-command"
+                if test (math "$i + 1") -gt $argc
+                    echo "❌ $arg requires true or false" >&2
+                    return 1
+                end
+                set command_override $argv[(math "$i + 1")]
+                set i (math "$i + 1")
+            case "--last-command=*" "--include-command=*"
+                set command_override (string replace -r '^--(include-)?(last-command|command)=' '' -- "$arg")
+            case "--include-path"
+                if test (math "$i + 1") -gt $argc
+                    echo "❌ $arg requires true or false" >&2
+                    return 1
+                end
+                set path_override $argv[(math "$i + 1")]
+                set i (math "$i + 1")
+            case "--include-path=*"
+                set path_override (string replace -- "--include-path=" "" -- "$arg")
             case "-m" "--message"
                 set user_caption_requested "true"
                 if test (math "$i + 1") -le $argc
@@ -661,17 +703,41 @@ function paste-gram --description "Send text, files, or directories to Telegram"
     end
 
     set -l include_hostname (set -q PASTEGRAM_HOSTNAME; and echo $PASTEGRAM_HOSTNAME; or echo "false")
+    set include_hostname (__paste_gram_normalize_bool "$include_hostname" "PASTEGRAM_HOSTNAME")
+    if test $status -ne 0
+        return 1
+    end
+    if test -n "$hostname_override"
+        set include_hostname (__paste_gram_normalize_bool "$hostname_override" "--hostname")
+        if test $status -ne 0
+            return 1
+        end
+    end
+
     set -l include_command (set -q PASTEGRAM_LAST_COMMAND; and echo $PASTEGRAM_LAST_COMMAND; or echo "false")
+    set include_command (__paste_gram_normalize_bool "$include_command" "PASTEGRAM_LAST_COMMAND")
+    if test $status -ne 0
+        return 1
+    end
+    if test -n "$command_override"
+        set include_command (__paste_gram_normalize_bool "$command_override" "--last-command")
+        if test $status -ne 0
+            return 1
+        end
+    end
+
     set -l include_path "true"
     if set -q PASTEGRAM_INCLUDE_PATH
-        switch (string lower -- $PASTEGRAM_INCLUDE_PATH)
-            case "true" "1" "yes"
-                set include_path "true"
-            case "false" "0" "no"
-                set include_path "false"
-            case "*"
-                echo "❌ PASTEGRAM_INCLUDE_PATH must be true or false" >&2
-                return 1
+        set include_path $PASTEGRAM_INCLUDE_PATH
+    end
+    set include_path (__paste_gram_normalize_bool "$include_path" "PASTEGRAM_INCLUDE_PATH")
+    if test $status -ne 0
+        return 1
+    end
+    if test -n "$path_override"
+        set include_path (__paste_gram_normalize_bool "$path_override" "--include-path")
+        if test $status -ne 0
+            return 1
         end
     end
 
@@ -902,6 +968,7 @@ function paste-gram --description "Send text, files, or directories to Telegram"
        test $include_hostname = "True"; or \
        test $include_hostname = "1"
         echo -e "<b>Host:</b> <u>$m_hostname</u>" >> "$head_message_text_file"
+        printf '\n' >> "$head_message_text_file"
 #         echo -e "Hostname: $m_hostname"
     end
 
@@ -910,17 +977,8 @@ function paste-gram --description "Send text, files, or directories to Telegram"
        test $include_command = "1"
         echo -e "<b>Command:</b>" >> "$head_message_text_file"
         echo -e "\$ <b>$display_full_cmd</b>" >> "$head_message_text_file"
-#         echo -e "FullCommand: $full_cmd"
-    end
-
-
-    if test $include_command  = "true";  or \
-       test $include_command  = "True";  or \
-       test $include_command  = "1"   ;  or \
-       test $include_hostname = "true";  or \
-       test $include_hostname = "True";  or \
-       test $include_hostname = "1"
         printf '\n' >> "$head_message_text_file"
+#         echo -e "FullCommand: $full_cmd"
     end
 
     #cat $head_message_text_file
