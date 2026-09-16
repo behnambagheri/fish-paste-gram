@@ -12,6 +12,26 @@ function __paste_gram_file_size --argument-names file_path
     end
 end
 
+function __paste_gram_display_path --argument-names path
+    if test -z "$path"; or test -z "$HOME"
+        printf '%s\n' "$path"
+        return
+    end
+
+    if test "$path" = "$HOME"
+        printf '~\n'
+        return
+    end
+
+    set -l home_prefix "$HOME/"
+    set -l prefix_length (string length -- "$home_prefix")
+    if test (string sub -s 1 -l "$prefix_length" -- "$path") = "$home_prefix"
+        printf '~/%s\n' (string sub -s (math "$prefix_length + 1") -- "$path")
+    else
+        printf '%s\n' "$path"
+    end
+end
+
 function __paste_gram_bot_request --argument-names api_url token method target_label verbose
     set -l curl_args $argv[6..-1]
     if test "$verbose" = "true"
@@ -697,6 +717,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
     #sync_history
     history --merge
     set -l full_cmd (history --max 2 | head -n 1)
+    set -l display_full_cmd (string replace -a -- "$HOME" "~" "$full_cmd")
 
     if test "$verbose" = "true"
         printf '[paste-gram verbose] resolved target(s): %s\n' (string join ', ' -- $chat_labels) >&2
@@ -714,14 +735,14 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
     if test $include_hostname = "true"; or \
        test $include_hostname = "True"; or \
        test $include_hostname = "1"
-        echo -e "<b>Hostname:</b> <u>$m_hostname</u>" >> "$head_message_text_file"
+        echo -e "🖥️ <b>Host:</b> <u>$m_hostname</u>" >> "$head_message_text_file"
 #         echo -e "Hostname: $m_hostname"
     end
 
     if test $include_command = "true"; or \
        test $include_command = "True"; or \
        test $include_command = "1"
-        echo -e "\$ <b><u>$full_cmd</u></b>" >> "$head_message_text_file"
+        echo -e "\$ <b><u>$display_full_cmd</u></b>" >> "$head_message_text_file"
 #         echo -e "FullCommand: $full_cmd"
     end
 
@@ -732,7 +753,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
        test $include_hostname = "true";  or \
        test $include_hostname = "True";  or \
        test $include_hostname = "1"
-        echo -e "\n=======================\n" >> "$head_message_text_file"
+        echo -e "\n━━━━━━━━━━━━━━━━━━━━\n" >> "$head_message_text_file"
     end
 
     #cat $head_message_text_file
@@ -790,14 +811,12 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
 
                 echo -e "File Size: $file_size_mb MB"
 
-                echo -e "Caption:\n" > "$message_text_file"
-                cat "$head_message_text_file" >> "$message_text_file"
+                set -l display_path (__paste_gram_display_path "$source_path")
+                cat "$head_message_text_file" > "$message_text_file"
                 if test "$is_directory" = "true"
-                    echo -e "<b>Directory:</b> <u>$source_name</u>" >> "$message_text_file"
-                    echo -e "<b>PATH:</b> <u>$source_path</u>" >> "$message_text_file"
+                    printf '📍 <b>PATH:</b> <u>%s</u>\n' "$display_path" >> "$message_text_file"
                 else
-                    echo -e "<b>File:</b> <u>$source_path</u>" >> "$message_text_file"
-                    echo -e "<b>PATH:</b> <u>$source_path</u>" >> "$message_text_file"
+                    printf '📄 <b>FILE:</b> <u>%s</u>\n' "$display_path" >> "$message_text_file"
                 end
 
                 #++++++++++++++++++++++++++++++++++++++

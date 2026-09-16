@@ -12,6 +12,7 @@
 
 ### Changed
 - `-v` is now the verbose flag; use `-V` or `--version` for version output.
+- File captions are now compact and prettier: redundant headers are removed, directory names are not repeated, and home-directory paths use `~/…`.
 
 ### Fixed
 - MTProto proxy handling now uses the current Telethon `python-socks` dependency instead of requiring PySocks.

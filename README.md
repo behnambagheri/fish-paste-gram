@@ -12,7 +12,7 @@ Send text, files, or directories to your Telegram chat directly from the Fish sh
 - Fish completions for `paste-gram` and `ptg`.
 - Directories are automatically archived as `.tgz` files; archives over 50MB are split into 49MB chunks.
 - Files over 50MB are auto-compressed (`tar.gz`) and split into 49MB chunks.
-- Compatible with both Linux and macOS with HTML-based captions for host/command/path.
+- Compatible with both Linux and macOS with compact HTML captions for host/command/path.
 
 ---
 
@@ -265,7 +265,7 @@ ptg -v ~/Documents/log.txt
 ptg -v --id @my_other_chat "debug me"
 ```
 
-If `PASTEGRAM_HOSTNAME` or `PASTEGRAM_LAST_COMMAND` is set to `"true"`, those will be prepended to your message or file caption.
+If `PASTEGRAM_HOSTNAME` or `PASTEGRAM_LAST_COMMAND` is set to `"true"`, those will be prepended to your message or file caption. File captions omit redundant labels, shorten paths inside `$HOME` to `~/…`, and show directories using the source path while Telegram displays the archive filename.
 Use `-v`/`--verbose` with any send form to print the selected mode, input type, resolved target, API URL, proxy status, runtime settings, and the Telegram response. Secrets such as bot tokens, API hashes, proxy passwords, and MTProxy secrets are redacted. `-V`/`--version` prints only the version.
 
 ---
