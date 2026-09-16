@@ -32,6 +32,37 @@ function __paste_gram_display_path --argument-names path
     end
 end
 
+function __paste_gram_open_editor --argument-names file_path
+    set -l editor_command ""
+    if set -q GIT_EDITOR; and test -n "$GIT_EDITOR"
+        set editor_command "$GIT_EDITOR"
+    else if set -q VISUAL; and test -n "$VISUAL"
+        set editor_command "$VISUAL"
+    else if set -q EDITOR; and test -n "$EDITOR"
+        set editor_command "$EDITOR"
+    else
+        set editor_command "vi"
+    end
+
+    set -l editor_parts (string split ' ' -- "$editor_command")
+    if test (count $editor_parts) -eq 0; or not command -sq "$editor_parts[1]"
+        echo "❌ Caption editor not found: $editor_command" >&2
+        return 1
+    end
+
+    command $editor_parts "$file_path"
+end
+
+function __paste_gram_append_user_caption --argument-names output_file caption_file
+    if not test -s "$caption_file"
+        return 0
+    end
+
+    printf '<b>Caption:</b>\n' >> "$output_file"
+    sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' "$caption_file" >> "$output_file"
+    printf '\n' >> "$output_file"
+end
+
 function __paste_gram_bot_request --argument-names api_url token method target_label verbose
     set -l curl_args $argv[6..-1]
     if test "$verbose" = "true"
@@ -63,6 +94,69 @@ function __paste_gram_bot_request --argument-names api_url token method target_l
     end
 
     printf '%s\n' "$response"
+end
+
+function __paste_gram_bot_send_long_caption --argument-names api_url token caption_path verbose
+    set -l target_chat_ids $argv[5..-1]
+    set -l splitdir (mktemp -d)
+    split -b 3800 "$caption_path" "$splitdir/chunk_"
+    set -l request_status 0
+
+    for target_chat_id in $target_chat_ids
+        set -l response (__paste_gram_bot_request "$api_url" "$token" "sendMessage" "$target_chat_id" "$verbose" \
+            --data-urlencode chat_id="$target_chat_id" \
+            --data-urlencode text="<b>Caption:</b>" \
+            -d parse_mode="HTML" \
+            --connect-timeout 10 \
+            --max-time 30)
+        set request_status $status
+        if test $request_status -ne 0; or not echo $response | jq -e '.ok' >/dev/null
+            echo "Error: Failed to send long caption title to $target_chat_id" >&2
+            rm -rf "$splitdir"
+            return 1
+        end
+
+        for chunk in $splitdir/chunk_*
+            set response (__paste_gram_bot_request "$api_url" "$token" "sendMessage" "$target_chat_id" "$verbose" \
+                --data-urlencode chat_id="$target_chat_id" \
+                --data-urlencode text="$(cat "$chunk")" \
+                --connect-timeout 10 \
+                --max-time 30)
+            set request_status $status
+            if test $request_status -ne 0; or not echo $response | jq -e '.ok' >/dev/null
+                echo "Error: Failed to send long caption body to $target_chat_id" >&2
+                rm -rf "$splitdir"
+                return 1
+            end
+        end
+    end
+
+    rm -rf "$splitdir"
+end
+
+function __paste_gram_mtproto_send_long_caption --argument-names caption_path verbose
+    set -l mtproto_chat_ids $argv[3..-1]
+    set -l title_file (mktemp)
+    set -l title_manifest (mktemp)
+    set -l splitdir (mktemp -d)
+    set -l body_manifest (mktemp)
+    printf '<b>Caption:</b>\n' > "$title_file"
+    printf '%s\n' "$title_file" > "$title_manifest"
+    split -b 3800 "$caption_path" "$splitdir/chunk_"
+    printf '%s\n' $splitdir/chunk_* > "$body_manifest"
+
+    __paste_gram_mtproto_send "message" "$title_manifest" "" "" "$verbose" $mtproto_chat_ids
+    if test $status -ne 0
+        rm -f "$title_file" "$title_manifest" "$body_manifest"
+        rm -rf "$splitdir"
+        return 1
+    end
+
+    __paste_gram_mtproto_send "message_plain" "$body_manifest" "" "" "$verbose" $mtproto_chat_ids
+    set -l request_status $status
+    rm -f "$title_file" "$title_manifest" "$body_manifest"
+    rm -rf "$splitdir"
+    return $request_status
 end
 
 function __paste_gram_mtproto_send --argument-names mode manifest file_path caption_path verbose
@@ -240,19 +334,20 @@ async def main():
         print(f"[paste-gram verbose] MTProto target(s): {chat_target_summary}", file=sys.stderr)
     async with TelegramClient(session, api_id, api_hash, **client_kwargs) as client:
         await client.start()
-        if mode == "message":
+        if mode in ("message", "message_plain"):
             if not manifest or not os.path.exists(manifest):
                 raise RuntimeError("Missing message manifest for MTProto send")
             with open(manifest, "r", encoding="utf-8") as handle:
                 message_files = [line.strip() for line in handle if line.strip()]
             if not message_files:
                 raise RuntimeError("No message chunks found for MTProto send")
+            message_parse_mode = "html" if mode == "message" else None
             for chat in chat_ids:
                 entity = await resolve_entity(client, chat)
                 for msg_file in message_files:
                     with open(msg_file, "r", encoding="utf-8") as mf:
                         text = mf.read()
-                    sent_message = await client.send_message(entity, text, parse_mode="html")
+                    sent_message = await client.send_message(entity, text, parse_mode=message_parse_mode)
                     verbose_response("send_message", sent_message)
                     await pause_between_sends()
         elif mode == "file":
@@ -360,7 +455,7 @@ except Exception as exc:
     end
 end
 
-function paste-gram --description "Send text or file to Telegram" --argument cmdArg
+function paste-gram --description "Send text, files, or directories to Telegram" --argument cmdArg
     set -l pastegram_version "v1.7.0"
     set -l token $TELEGRAM_TOKEN
     set -l chat_id $TELEGRAM_CHAT_ID
@@ -379,6 +474,9 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
     set -l verbose "false"
     set -l allow_mt_external "false"
     set -l allow_mt_broadcast "false"
+    set -l user_caption_requested "false"
+    set -l user_caption_editor "false"
+    set -l user_caption_text ""
 
     set -l i 1
     set -l argc (count $argv)
@@ -386,28 +484,43 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
         set -l arg $argv[$i]
         switch $arg
             case "-h" "--help"
-                printf "paste-gram — send text or files to Telegram\n\n"
+                printf "paste-gram — send text, files, or directories to Telegram\n\n"
                 printf "Usage:\n"
                 printf "  paste-gram \"message\"                 # send plain text\n"
                 printf "  echo \"from pipe\" | paste-gram        # send stdin\n"
                 printf "  paste-gram /path/to/file              # send file or directory (auto-archive/chunk >50MB)\n"
+                printf "  paste-gram -m \"caption\" /path/to/file # add a caption to a file or directory\n"
+                printf "  paste-gram -m /path/to/file            # edit a long caption in the default editor\n"
                 printf "  paste-gram --id @other_chat \"msg\"    # override TELEGRAM_CHAT_ID (numeric, alias, repeatable)\n"
                 printf "  paste-gram --mtproto \"msg\"           # send via personal account (MTProto)\n"
                 printf "  paste-gram --bot \"msg\"               # force Bot API for one call\n"
                 printf "  paste-gram -v \"msg\"                 # show effective config and Telegram responses\n"
                 printf "  PASTEGRAM_HOSTNAME=true PASTEGRAM_LAST_COMMAND=true paste-gram \"msg\"\n\n"
                 printf "Env vars (required): TELEGRAM_TOKEN, TELEGRAM_CHAT_ID\n"
-                printf "Env vars (optional): TELEGRAM_API_URL, PASTEGRAM_HOSTNAME=true|1, PASTEGRAM_LAST_COMMAND=true|1, PASTEGRAM_ID_MAP=<path to alias json>\n"
+                printf "Env vars (optional): TELEGRAM_API_URL, PASTEGRAM_HOSTNAME=true|1, PASTEGRAM_LAST_COMMAND=true|1, PASTEGRAM_INCLUDE_PATH=true|false, PASTEGRAM_ID_MAP=<path to alias json>\n"
                 printf "MTProto env vars (required for --mtproto): TELEGRAM_MT_API_ID, TELEGRAM_MT_API_HASH\n"
                 printf "MTProto env vars (optional): TELEGRAM_MT_PYTHON=<path> TELEGRAM_MT_SESSION=<path> TELEGRAM_MT_PROXY=<url> TELEGRAM_MT_DELAY_SECONDS=<seconds>\n"
                 printf "MTProto safety overrides: PASTEGRAM_MT_ALLOW_EXTERNAL=true PASTEGRAM_MT_ALLOW_BROADCAST=true\n"
                 printf "Mode env vars: PASTEGRAM_DEFAULT_MODE=bot|mtproto; PASTEGRAM_USE_MT=true|false is supported for compatibility\n"
-                printf "Flags (optional): -v|--verbose, --id|-i <chat-id|alias> (repeatable), --mtproto/--personal, --bot/--bot-api\n"
+                printf "Flags (optional): -m|--message [caption], -v|--verbose, --id|-i <chat-id|alias> (repeatable), --mtproto/--personal, --bot/--bot-api\n"
                 printf "Version: -V|--version\n"
                 printf "Dependencies: fish 3+, curl, jq, tar, split, stat, Python with telethon (MTProto), python-socks[asyncio] (MTProto proxy)\n"
                 return 0
             case "-v" "--verbose"
                 set verbose "true"
+            case "-m" "--message"
+                set user_caption_requested "true"
+                if test (math "$i + 1") -le $argc
+                    set -l message_arg $argv[(math "$i + 1")]
+                    if test "$message_arg" != "--"; and not string match -qr '^-' -- "$message_arg"; and not test -f "$message_arg"; and not test -d "$message_arg"
+                        set user_caption_text "$message_arg"
+                        set i (math "$i + 1")
+                    else
+                        set user_caption_editor "true"
+                    end
+                else
+                    set user_caption_editor "true"
+                end
             case "-V" "--version"
                 printf "paste-gram %s\n" $pastegram_version
                 return 0
@@ -430,6 +543,18 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
             case "-i=*"
                 set -l raw_value (string replace -- "-i=" "" $arg)
                 set override_chat_ids $override_chat_ids (string split "," -- $raw_value)
+            case "--message=*"
+                set user_caption_requested "true"
+                set user_caption_text (string replace -- "--message=" "" $arg)
+                if test -z "$user_caption_text"
+                    set user_caption_editor "true"
+                end
+            case "-m=*"
+                set user_caption_requested "true"
+                set user_caption_text (string replace -- "-m=" "" $arg)
+                if test -z "$user_caption_text"
+                    set user_caption_editor "true"
+                end
             case "--"
                 if test $i -lt $argc
                     set positional_args $positional_args $argv[(math "$i + 1")..-1]
@@ -537,6 +662,18 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
 
     set -l include_hostname (set -q PASTEGRAM_HOSTNAME; and echo $PASTEGRAM_HOSTNAME; or echo "false")
     set -l include_command (set -q PASTEGRAM_LAST_COMMAND; and echo $PASTEGRAM_LAST_COMMAND; or echo "false")
+    set -l include_path "true"
+    if set -q PASTEGRAM_INCLUDE_PATH
+        switch (string lower -- $PASTEGRAM_INCLUDE_PATH)
+            case "true" "1" "yes"
+                set include_path "true"
+            case "false" "0" "no"
+                set include_path "false"
+            case "*"
+                echo "❌ PASTEGRAM_INCLUDE_PATH must be true or false" >&2
+                return 1
+        end
+    end
 
     if test "$verbose" = "true"
         printf '[paste-gram verbose] version: %s\n' "$pastegram_version" >&2
@@ -728,6 +865,35 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
     set -l message_text_file (mktemp)
     set -l splitdir (mktemp -d)
     set -l compressdir (mktemp -d)
+    set -l user_caption_file ""
+    set -l metadata_caption_file ""
+
+    if test "$user_caption_requested" = "true"
+        set user_caption_file (mktemp)
+        if test "$user_caption_editor" = "true"
+            if not __paste_gram_open_editor "$user_caption_file"
+                rm -f "$user_caption_file"
+                return 1
+            end
+        else
+            printf '%s\n' "$user_caption_text" > "$user_caption_file"
+        end
+        if test "$verbose" = "true"
+            if test "$user_caption_editor" = "true"
+                set -l editor_display "vi"
+                if set -q GIT_EDITOR; and test -n "$GIT_EDITOR"
+                    set editor_display "$GIT_EDITOR"
+                else if set -q VISUAL; and test -n "$VISUAL"
+                    set editor_display "$VISUAL"
+                else if set -q EDITOR; and test -n "$EDITOR"
+                    set editor_display "$EDITOR"
+                end
+                printf '[paste-gram verbose] user caption: edited in %s\n' "$editor_display" >&2
+            else
+                printf '[paste-gram verbose] user caption: inline text configured (content hidden)\n' >&2
+            end
+        end
+    end
 
 
 
@@ -735,14 +901,15 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
     if test $include_hostname = "true"; or \
        test $include_hostname = "True"; or \
        test $include_hostname = "1"
-        echo -e "🖥️ <b>Host:</b> <u>$m_hostname</u>" >> "$head_message_text_file"
+        echo -e "<b>Host:</b> <u>$m_hostname</u>" >> "$head_message_text_file"
 #         echo -e "Hostname: $m_hostname"
     end
 
     if test $include_command = "true"; or \
        test $include_command = "True"; or \
        test $include_command = "1"
-        echo -e "\$ <b><u>$display_full_cmd</u></b>" >> "$head_message_text_file"
+        echo -e "<b>Command:</b>" >> "$head_message_text_file"
+        echo -e "\$ <b>$display_full_cmd</b>" >> "$head_message_text_file"
 #         echo -e "FullCommand: $full_cmd"
     end
 
@@ -753,7 +920,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
        test $include_hostname = "true";  or \
        test $include_hostname = "True";  or \
        test $include_hostname = "1"
-        echo -e "\n━━━━━━━━━━━━━━━━━━━━\n" >> "$head_message_text_file"
+        printf '\n' >> "$head_message_text_file"
     end
 
     #cat $head_message_text_file
@@ -812,11 +979,16 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 echo -e "File Size: $file_size_mb MB"
 
                 set -l display_path (__paste_gram_display_path "$source_path")
-                cat "$head_message_text_file" > "$message_text_file"
-                if test "$is_directory" = "true"
-                    printf '📍 <b>PATH:</b> <u>%s</u>\n' "$display_path" >> "$message_text_file"
-                else
-                    printf '📄 <b>FILE:</b> <u>%s</u>\n' "$display_path" >> "$message_text_file"
+                __paste_gram_append_user_caption "$message_text_file" "$user_caption_file"
+                cat "$head_message_text_file" >> "$message_text_file"
+                if test "$include_path" = "true"
+                    if test "$is_directory" = "true"
+                        printf '<b>PATH:</b>\n' >> "$message_text_file"
+                        printf '<u>%s</u>\n' "$display_path" >> "$message_text_file"
+                    else
+                        printf '<b>FILE:</b>\n' >> "$message_text_file"
+                        printf '<u>%s</u>\n' "$display_path" >> "$message_text_file"
+                    end
                 end
 
                 #++++++++++++++++++++++++++++++++++++++
@@ -857,9 +1029,38 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
 
                 end
 
+                set -l upload_caption_file "$message_text_file"
+                if test "$user_caption_requested" = "true"
+                    set -l caption_characters (wc -m < "$message_text_file" | string trim)
+                    if test "$caption_characters" -gt 1024
+                        echo "Long caption exceeds Telegram's document-caption limit; sending it as text before the file."
+                        if test $use_mtproto = "true"
+                            __paste_gram_mtproto_send_long_caption "$user_caption_file" "$verbose" $chat_ids
+                        else
+                            __paste_gram_bot_send_long_caption "$api_url" "$token" "$user_caption_file" "$verbose" $chat_ids
+                        end
+                        if test $status -ne 0
+                            return 1
+                        end
+
+                        set metadata_caption_file (mktemp)
+                        cat "$head_message_text_file" > "$metadata_caption_file"
+                        if test "$include_path" = "true"
+                            if test "$is_directory" = "true"
+                                printf '<b>PATH:</b>\n' >> "$metadata_caption_file"
+                                printf '<u>%s</u>\n' "$display_path" >> "$metadata_caption_file"
+                            else
+                                printf '<b>FILE:</b>\n' >> "$metadata_caption_file"
+                                printf '<u>%s</u>\n' "$display_path" >> "$metadata_caption_file"
+                            end
+                        end
+                        set upload_caption_file "$metadata_caption_file"
+                    end
+                end
+
                 if test "$file_size_mb" -gt 50
                     if test $use_mtproto = "true"
-                        __paste_gram_mtproto_send "file" "" "$file" "$message_text_file" "$verbose" $chat_ids
+                        __paste_gram_mtproto_send "file" "" "$file" "$upload_caption_file" "$verbose" $chat_ids
                     else
                         echo -e "Sending the compressed file in chunks."
                         split -b 49MB -d "$file" $splitdir/"$file_name"_
@@ -871,7 +1072,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                                 set response (__paste_gram_bot_request "$api_url" "$token" "sendDocument" "$target_label" "$verbose" \
                                     --form-string chat_id="$target_chat_id" \
                                     -F document=@"$i" \
-                                    -F caption="$(cat $message_text_file)" \
+                                    -F caption="$(cat $upload_caption_file)" \
                                     -F parse_mode="HTML" \
                                     --connect-timeout 10 \
                                     --max-time 30)
@@ -901,7 +1102,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                     end
 
                     if test $use_mtproto = "true"
-                        __paste_gram_mtproto_send "file" "" "$file" "$message_text_file" "$verbose" $chat_ids
+                        __paste_gram_mtproto_send "file" "" "$file" "$upload_caption_file" "$verbose" $chat_ids
                     else
                         for idx in (seq (count $chat_ids))
                             set -l target_chat_id $chat_ids[$idx]
@@ -910,7 +1111,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                             set response (__paste_gram_bot_request "$api_url" "$token" "sendDocument" "$target_label" "$verbose" \
                                 --form-string chat_id="$target_chat_id" \
                                 -F document=@"$file" \
-                                -F caption="$(cat $message_text_file)" \
+                                -F caption="$(cat $upload_caption_file)" \
                                 -F parse_mode="HTML" \
                                 --connect-timeout 10 \
                                 --max-time 30)
@@ -945,7 +1146,8 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                     sed -i 's#<#-#g' $body_meesage_text_file
                     sed -i 's#>#-#g' $body_meesage_text_file
                 end
-                cat "$head_message_text_file" > "$message_text_file"
+                __paste_gram_append_user_caption "$message_text_file" "$user_caption_file"
+                cat "$head_message_text_file" >> "$message_text_file"
                 echo -e "<pre>" >> "$message_text_file"
                 cat "$body_meesage_text_file" >> "$message_text_file"
                 echo -e "</pre>" >> "$message_text_file"
@@ -1015,7 +1217,8 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
         cat >> $body_meesage_text_file
         #echo "string from pipe: $combined"
         # Regular message
-        cat "$head_message_text_file" > "$message_text_file"
+        __paste_gram_append_user_caption "$message_text_file" "$user_caption_file"
+        cat "$head_message_text_file" >> "$message_text_file"
         echo -e "<pre>" >> "$message_text_file"
         if test (uname) = "Darwin"
             sed -i '' 's#<#-#g' $body_meesage_text_file
@@ -1085,5 +1288,11 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 end
             end
         end
+    end
+    if test -n "$user_caption_file"
+        rm -f "$user_caption_file"
+    end
+    if test -n "$metadata_caption_file"
+        rm -f "$metadata_caption_file"
     end
 end

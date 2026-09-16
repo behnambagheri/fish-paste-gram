@@ -7,6 +7,7 @@ Send text, files, or directories to your Telegram chat directly from the Fish sh
 ### 🚀 Recent updates
 - Chat alias map now supports `chat_id` + `username` objects (username preferred).
 - Optional MTProto mode to send as your personal account (`--mtproto`/`--personal`).
+- Optional user captions with `-m`/`--message`, including long captions written in your default editor.
 - Send to multiple chats at once with repeatable `--id`/`-i` or comma-separated aliases.
 - Default install creates `~/.config/paste-gram/chat_ids.json` with placeholder aliases only (friend1/friend2/demo_channel).
 - Fish completions for `paste-gram` and `ptg`.
@@ -64,6 +65,7 @@ set -Ux TELEGRAM_CHAT_ID '123456789'
 set -Ux TELEGRAM_API_URL 'https://api.telegram.org'
 set -Ux PASTEGRAM_HOSTNAME 'true'
 set -Ux PASTEGRAM_LAST_COMMAND 'true'
+set -Ux PASTEGRAM_INCLUDE_PATH 'true'
 # Optional default transport: bot or mtproto
 set -Ux PASTEGRAM_DEFAULT_MODE 'bot'
 # Optional explicit Python interpreter for MTProto
@@ -259,13 +261,20 @@ ptg ~/Documents/log.txt
 # Archive and send a directory (large archives are chunked automatically)
 ptg ~/Documents/project
 
+# Add a short caption to a file or directory
+ptg -m "Updated configuration" ~/Documents/project
+
+# Open $GIT_EDITOR, $VISUAL, $EDITOR, or vi to write a long caption
+ptg -m ~/Documents/project
+
 # Show effective configuration and Telegram responses (works with stdin, text, and files)
 echo "debug me" | ptg -v
 ptg -v ~/Documents/log.txt
 ptg -v --id @my_other_chat "debug me"
 ```
 
-If `PASTEGRAM_HOSTNAME` or `PASTEGRAM_LAST_COMMAND` is set to `"true"`, those will be prepended to your message or file caption. File captions omit redundant labels, shorten paths inside `$HOME` to `~/…`, and show directories using the source path while Telegram displays the archive filename.
+If `PASTEGRAM_HOSTNAME` or `PASTEGRAM_LAST_COMMAND` is set to `"true"`, those will be prepended to your message or file caption. `PASTEGRAM_INCLUDE_PATH` defaults to `true`; set it to `false` to omit the file or directory path. File captions omit redundant labels, shorten paths inside `$HOME` to `~/…`, and show directories using the source path while Telegram displays the archive filename.
+Use `-m`/`--message` with inline text for a short caption. If the option has no text value, paste-gram opens `$GIT_EDITOR`, then `$VISUAL`, then `$EDITOR`, then `vi`; the saved text is added above the generated metadata under a bold `Caption:` title. Caption text is escaped as plain text for Telegram HTML mode. If the complete document caption is too long for Telegram, the full user caption is sent as text before the file and only the compact metadata remains attached to the document.
 Use `-v`/`--verbose` with any send form to print the selected mode, input type, resolved target, API URL, proxy status, runtime settings, and the Telegram response. Secrets such as bot tokens, API hashes, proxy passwords, and MTProxy secrets are redacted. `-V`/`--version` prints only the version.
 
 ---
@@ -279,6 +288,7 @@ Use `-v`/`--verbose` with any send form to print the selected mode, input type, 
 | `TELEGRAM_API_URL`        | ❌ no    | `https://api.telegram.org` | Override default Telegram API URL (e.g. for proxy) |
 | `PASTEGRAM_HOSTNAME`      | ❌ no    | `false` | If `"true"`, includes hostname in message                    |
 | `PASTEGRAM_LAST_COMMAND`  | ❌ no    | `false` | If `"true"`, includes executed command line in message       |
+| `PASTEGRAM_INCLUDE_PATH`  | ❌ no    | `true`  | If `"false"`, omits file or directory path from captions     |
 | `PASTEGRAM_ID_MAP`        | ❌ no    | `$HOME/.config/paste-gram/chat_ids.json` | Path to alias map for `--id` lookups |
 | `PASTEGRAM_DEFAULT_MODE`  | ❌ no    | `bot` | Default transport: `bot` or `mtproto` |
 | `PASTEGRAM_USE_MT`        | ❌ no    | `false` | Legacy compatibility toggle for default MTProto mode |

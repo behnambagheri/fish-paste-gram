@@ -5,6 +5,7 @@
 ### Added
 - Configurable default transport with `PASTEGRAM_DEFAULT_MODE=bot|mtproto`.
 - Directory uploads are archived as `.tgz` files and chunked when the archive exceeds the Bot API upload threshold.
+- Optional `-m`/`--message` captions, with inline text or default-editor support for long captions; captions beyond Telegram's document limit are delivered as text before the file.
 - MTProto defaults to `me` (Saved Messages) when `--id` is omitted.
 - Automatic preference for `$HOME/.venvs/venv3.14/bin/python`, with `TELEGRAM_MT_PYTHON` override.
 - `--bot`/`--bot-api` one-command transport override.
@@ -13,6 +14,8 @@
 ### Changed
 - `-v` is now the verbose flag; use `-V` or `--version` for version output.
 - File captions are now compact and prettier: redundant headers are removed, directory names are not repeated, and home-directory paths use `~/…`.
+- Captions now use plain Host, Command, PATH, and FILE labels without emojis or separator lines; command and path values are displayed on their own lines.
+- `PASTEGRAM_INCLUDE_PATH=false` can omit generated file or directory paths from captions.
 
 ### Fixed
 - MTProto proxy handling now uses the current Telethon `python-socks` dependency instead of requiring PySocks.
