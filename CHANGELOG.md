@@ -4,6 +4,7 @@
 
 ### Added
 - Configurable default transport with `PASTEGRAM_DEFAULT_MODE=bot|mtproto`.
+- Directory uploads are archived as `.tgz` files and chunked when the archive exceeds the Bot API upload threshold.
 - MTProto defaults to `me` (Saved Messages) when `--id` is omitted.
 - Automatic preference for `$HOME/.venvs/venv3.14/bin/python`, with `TELEGRAM_MT_PYTHON` override.
 - `--bot`/`--bot-api` one-command transport override.

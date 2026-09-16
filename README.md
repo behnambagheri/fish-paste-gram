@@ -1,8 +1,8 @@
 # 📬 paste-gram
 
-Send text or files to your Telegram chat directly from the Fish shell!
+Send text, files, or directories to your Telegram chat directly from the Fish shell!
 
-`paste-gram` is a lightweight Fish plugin that sends any input (either text or a file) to your Telegram bot using the Bot API, with an optional MTProto mode for personal-account sends. You can pipe output from other commands or pass messages/files directly. Perfect for quick remote sharing, logging, or personal note-taking!
+`paste-gram` is a lightweight Fish plugin that sends any input (text, files, or directories) to your Telegram bot using the Bot API, with an optional MTProto mode for personal-account sends. You can pipe output from other commands or pass messages/files/directories directly. Perfect for quick remote sharing, logging, or personal note-taking!
 
 ### 🚀 Recent updates
 - Chat alias map now supports `chat_id` + `username` objects (username preferred).
@@ -10,6 +10,7 @@ Send text or files to your Telegram chat directly from the Fish shell!
 - Send to multiple chats at once with repeatable `--id`/`-i` or comma-separated aliases.
 - Default install creates `~/.config/paste-gram/chat_ids.json` with placeholder aliases only (friend1/friend2/demo_channel).
 - Fish completions for `paste-gram` and `ptg`.
+- Directories are automatically archived as `.tgz` files; archives over 50MB are split into 49MB chunks.
 - Files over 50MB are auto-compressed (`tar.gz`) and split into 49MB chunks.
 - Compatible with both Linux and macOS with HTML-based captions for host/command/path.
 
@@ -21,7 +22,7 @@ Send text or files to your Telegram chat directly from the Fish shell!
 - 📦 Works with `fisher` plugin manager
 - 🧾 Sends:
   - Messages (via direct argument or stdin)
-  - Files (as documents with optional caption)
+  - Files and directories (as documents with optional caption; directories are archived automatically)
 - 🖥️ Can prepend hostname and/or command line (configurable)
 - 🔐 Gets config from environment variables
 - 🧭 Built-in Fish completions for commands and `--id` aliases
@@ -254,6 +255,9 @@ ptg --id friend1,friend2 "Hello again"
 
 # Send a file with optional caption
 ptg ~/Documents/log.txt
+
+# Archive and send a directory (large archives are chunked automatically)
+ptg ~/Documents/project
 
 # Show effective configuration and Telegram responses (works with stdin, text, and files)
 echo "debug me" | ptg -v

@@ -370,7 +370,7 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                 printf "Usage:\n"
                 printf "  paste-gram \"message\"                 # send plain text\n"
                 printf "  echo \"from pipe\" | paste-gram        # send stdin\n"
-                printf "  paste-gram /path/to/file              # send file (auto-chunk >50MB)\n"
+                printf "  paste-gram /path/to/file              # send file or directory (auto-archive/chunk >50MB)\n"
                 printf "  paste-gram --id @other_chat \"msg\"    # override TELEGRAM_CHAT_ID (numeric, alias, repeatable)\n"
                 printf "  paste-gram --mtproto \"msg\"           # send via personal account (MTProto)\n"
                 printf "  paste-gram --bot \"msg\"               # force Bot API for one call\n"
@@ -491,6 +491,9 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
         if test -n "$positional_args"
             if test -f "$positional_args[1]"
                 set input_kind "file"
+                set input_detail "$positional_args[1]"
+            else if test -d "$positional_args[1]"
+                set input_kind "directory"
                 set input_detail "$positional_args[1]"
             else
                 set input_kind "argument"
@@ -739,38 +742,71 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
     if isatty stdin
         if test -n "$positional_args"
         #echo "Reading from arguments..."
-            if test -f "$positional_args[1]"
-                echo "Uploading file..."
+            if test -f "$positional_args[1]"; or test -d "$positional_args[1]"
                 set -f file $positional_args[1]
-                set -l abs_path (realpath $file)
+                set -l abs_path (realpath "$file")
+                set -l source_path "$abs_path"
+                set -l source_name (basename "$abs_path")
+                set -l is_directory "false"
+                if test -d "$file"
+                    set is_directory "true"
+                    echo "Compressing directory..."
+                else
+                    echo "Uploading file..."
+                end
 
-                set file_size (__paste_gram_file_size "$file")
-                if test $status -ne 0
-                    return 1
+                set file_name "$source_name"
+                set dir_name (dirname "$abs_path")
+                set file_size 0
+
+                if test "$is_directory" = "true"
+                    set -l tar_file "$compressdir/$source_name.tgz"
+                    if not tar -czf "$tar_file" -C "$dir_name" "$source_name"
+                        echo "❌ Failed to compress directory: $source_path" >&2
+                        return 1
+                    end
+                    set file "$tar_file"
+                    set file_name (basename "$tar_file")
+                    set file_size (__paste_gram_file_size "$file")
+                    if test $status -ne 0
+                        return 1
+                    end
+                else
+                    set file_size (__paste_gram_file_size "$file")
+                    if test $status -ne 0
+                        return 1
+                    end
                 end
 
                 if test "$verbose" = "true"
-                    printf '[paste-gram verbose] file path: %s\n' (realpath "$file") >&2
+                    printf '[paste-gram verbose] file path: %s\n' "$source_path" >&2
                     printf '[paste-gram verbose] file size: %s bytes\n' "$file_size" >&2
+                    if test "$is_directory" = "true"
+                        printf '[paste-gram verbose] directory delivery: archived as %s\n' "$file_name" >&2
+                    end
                 end
 
-
-                set  file_size_mb (math "$file_size / 1024 / 1024")
-                set  file_name (basename "$file")
-                set  dir_name (dirname "$file")
+                set file_size_mb (math "$file_size / 1024 / 1024")
 
                 echo -e "File Size: $file_size_mb MB"
 
                 echo -e "Caption:\n" > "$message_text_file"
                 cat "$head_message_text_file" >> "$message_text_file"
-                echo -e "<b>File:</b> <u>$file</u>" >> "$message_text_file"
-                echo -e "<b>PATH:</b> <u>$abs_path</u>" >> "$message_text_file"
-
-                set -l caption (printf "📄 <b>File:</b> %s\n📍 <b>Path:</b> %s" (basename $file) $abs_path)
+                if test "$is_directory" = "true"
+                    echo -e "<b>Directory:</b> <u>$source_name</u>" >> "$message_text_file"
+                    echo -e "<b>PATH:</b> <u>$source_path</u>" >> "$message_text_file"
+                else
+                    echo -e "<b>File:</b> <u>$source_path</u>" >> "$message_text_file"
+                    echo -e "<b>PATH:</b> <u>$source_path</u>" >> "$message_text_file"
+                end
 
                 #++++++++++++++++++++++++++++++++++++++
                 if test "$file_size_mb" -gt 50
-                    if test $use_mtproto = "true"
+                    if test "$is_directory" = "true"
+                        if test "$verbose" = "true"
+                            printf '[paste-gram verbose] directory archive exceeds 50MB; sending archive chunks directly\n' >&2
+                        end
+                    else if test $use_mtproto = "true"
                         echo -e "MTProto mode: sending file without Bot API size limits."
                         if test "$verbose" = "true"
                             printf '[paste-gram verbose] file delivery: direct MTProto upload\n' >&2
@@ -780,7 +816,10 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                         echo -e "Compress the file first."
 
                         set -l tar_file "$compressdir/$file_name.tgz"
-                        tar czvf "$tar_file" -C $dir_name "$file_name"
+                        if not tar -czf "$tar_file" -C "$dir_name" "$file_name"
+                            echo "❌ Failed to compress file: $source_path" >&2
+                            return 1
+                        end
 
                         set file_size (__paste_gram_file_size "$tar_file")
                         if test $status -ne 0
@@ -803,9 +842,8 @@ function paste-gram --description "Send text or file to Telegram" --argument cmd
                     if test $use_mtproto = "true"
                         __paste_gram_mtproto_send "file" "" "$file" "$message_text_file" "$verbose" $chat_ids
                     else
-                        echo -e "Chuck the compress file."
+                        echo -e "Sending the compressed file in chunks."
                         split -b 49MB -d "$file" $splitdir/"$file_name"_
-                        echo -e "Send Chuck: $i"
                         for i in "$splitdir/$file_name"_*
                             for idx in (seq (count $chat_ids))
                                 set -l target_chat_id $chat_ids[$idx]
