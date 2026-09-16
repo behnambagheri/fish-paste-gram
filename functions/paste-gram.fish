@@ -75,8 +75,11 @@ function __paste_gram_append_user_caption --argument-names output_file caption_f
     printf '\n' >> "$output_file"
 end
 
-function __paste_gram_bot_request --argument-names api_url token method target_label verbose
-    set -l curl_args $argv[6..-1]
+function __paste_gram_bot_request --argument-names api_url token method target_label verbose proxy_url
+    set -l curl_args $argv[7..-1]
+    if test -n "$proxy_url"
+        set curl_args --proxy "$proxy_url" $curl_args
+    end
     if test "$verbose" = "true"
         set -l api_url_display (string replace -r '\?.*$' '' -- "$api_url")
         set api_url_display (string replace -r '://[^/@]+@' '://<redacted>@' -- "$api_url_display")
@@ -108,14 +111,14 @@ function __paste_gram_bot_request --argument-names api_url token method target_l
     printf '%s\n' "$response"
 end
 
-function __paste_gram_bot_send_long_caption --argument-names api_url token caption_path verbose
-    set -l target_chat_ids $argv[5..-1]
+function __paste_gram_bot_send_long_caption --argument-names api_url token caption_path verbose proxy_url
+    set -l target_chat_ids $argv[6..-1]
     set -l splitdir (mktemp -d)
     split -b 3800 "$caption_path" "$splitdir/chunk_"
     set -l request_status 0
 
     for target_chat_id in $target_chat_ids
-        set -l response (__paste_gram_bot_request "$api_url" "$token" "sendMessage" "$target_chat_id" "$verbose" \
+        set -l response (__paste_gram_bot_request "$api_url" "$token" "sendMessage" "$target_chat_id" "$verbose" "$proxy_url" \
             --data-urlencode chat_id="$target_chat_id" \
             --data-urlencode text="<b>Caption:</b>" \
             -d parse_mode="HTML" \
@@ -129,7 +132,7 @@ function __paste_gram_bot_send_long_caption --argument-names api_url token capti
         end
 
         for chunk in $splitdir/chunk_*
-            set response (__paste_gram_bot_request "$api_url" "$token" "sendMessage" "$target_chat_id" "$verbose" \
+            set response (__paste_gram_bot_request "$api_url" "$token" "sendMessage" "$target_chat_id" "$verbose" "$proxy_url" \
                 --data-urlencode chat_id="$target_chat_id" \
                 --data-urlencode text="$(cat "$chunk")" \
                 --connect-timeout 10 \
@@ -478,6 +481,8 @@ function paste-gram --description "Send text, files, or directories to Telegram"
             set api_url (string trim -r -c "/" -- "$configured_api_url")
         end
     end
+    set -l api_url_override ""
+    set -l curl_proxy_override ""
     set -l override_chat_ids
     set -l positional_args
     set -l id_map_path (set -q PASTEGRAM_ID_MAP; and echo $PASTEGRAM_ID_MAP; or echo "$HOME/.config/paste-gram/chat_ids.json")
@@ -504,11 +509,12 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                 printf "  paste-gram \"message\"                 # send plain text\n"
                 printf "  echo \"from pipe\" | paste-gram        # send stdin\n"
                 printf "  paste-gram /path/to/file              # send file or directory (auto-archive/chunk >50MB)\n"
+                printf "  paste-gram /path/one /path/two        # compress and send multiple files/directories as one archive\n"
                 printf "  paste-gram -m \"caption\" /path/to/file # add a caption to a file or directory\n"
                 printf "  paste-gram -m /path/to/file            # edit a long caption in the default editor\n"
                 printf "  paste-gram --id @other_chat \"msg\"    # override TELEGRAM_CHAT_ID (numeric, alias, repeatable)\n"
                 printf "  paste-gram --mtproto \"msg\"           # send via personal account (MTProto)\n"
-                printf "  paste-gram --bot \"msg\"               # force Bot API for one call\n"
+                printf "  paste-gram --bot [api-url] \"msg\"    # force Bot API; optionally override its URL\n"
                 printf "  paste-gram -v \"msg\"                 # show effective config and Telegram responses\n"
                 printf "  PASTEGRAM_HOSTNAME=true PASTEGRAM_LAST_COMMAND=true paste-gram \"msg\"\n\n"
                 printf "Env vars (required): TELEGRAM_TOKEN, TELEGRAM_CHAT_ID\n"
@@ -517,12 +523,30 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                 printf "MTProto env vars (optional): TELEGRAM_MT_PYTHON=<path> TELEGRAM_MT_SESSION=<path> TELEGRAM_MT_PROXY=<url> TELEGRAM_MT_DELAY_SECONDS=<seconds>\n"
                 printf "MTProto safety overrides: PASTEGRAM_MT_ALLOW_EXTERNAL=true PASTEGRAM_MT_ALLOW_BROADCAST=true\n"
                 printf "Mode env vars: PASTEGRAM_DEFAULT_MODE=bot|mtproto; PASTEGRAM_USE_MT=true|false is supported for compatibility\n"
-                printf "Flags (optional): -m|--message [caption], --hostname <true|false>, --last-command <true|false>, --include-path <true|false>, -v|--verbose, --id|-i <chat-id|alias> (repeatable), --mtproto/--personal, --bot/--bot-api\n"
+                printf "Flags (optional): -m|--message [caption], --api-url <url>, --proxy <url>, --hostname <true|false>, --last-command <true|false>, --include-path <true|false>, -v|--verbose, --id|-i <chat-id|alias> (repeatable), --mtproto/--personal, --bot/--bot-api [api-url]\n"
                 printf "Version: -V|--version\n"
                 printf "Dependencies: fish 3+, curl, jq, tar, split, stat, Python with telethon (MTProto), python-socks[asyncio] (MTProto proxy)\n"
                 return 0
             case "-v" "--verbose"
                 set verbose "true"
+            case "--api-url"
+                if test (math "$i + 1") -gt $argc
+                    echo "❌ $arg requires an API URL" >&2
+                    return 1
+                end
+                set api_url_override $argv[(math "$i + 1")]
+                set i (math "$i + 1")
+            case "--api-url=*"
+                set api_url_override (string replace -- "--api-url=" "" -- "$arg")
+            case "--proxy"
+                if test (math "$i + 1") -gt $argc
+                    echo "❌ $arg requires a proxy URL" >&2
+                    return 1
+                end
+                set curl_proxy_override $argv[(math "$i + 1")]
+                set i (math "$i + 1")
+            case "--proxy=*"
+                set curl_proxy_override (string replace -- "--proxy=" "" -- "$arg")
             case "--hostname" "--include-hostname"
                 if test (math "$i + 1") -gt $argc
                     echo "❌ $arg requires true or false" >&2
@@ -579,6 +603,16 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                 set mode_override "mtproto"
             case "--bot" "--bot-api"
                 set mode_override "bot"
+                if test (math "$i + 1") -le $argc
+                    set -l bot_api_candidate $argv[(math "$i + 1")]
+                    if string match -qr '^https?://' -- "$bot_api_candidate"
+                        set api_url_override $bot_api_candidate
+                        set i (math "$i + 1")
+                    end
+                end
+            case "--bot=*" "--bot-api=*"
+                set mode_override "bot"
+                set api_url_override (string replace -r '^--(bot-api|bot)=' '' -- "$arg")
             case "--id=*"
                 set -l raw_value (string replace -- "--id=" "" $arg)
                 set override_chat_ids $override_chat_ids (string split "," -- $raw_value)
@@ -606,6 +640,10 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                 set positional_args $positional_args $arg
         end
         set i (math "$i + 1")
+    end
+
+    if test -n "$api_url_override"
+        set api_url (string trim -r -c "/" -- (string trim -- "$api_url_override"))
     end
 
     set -l default_mode "bot"
@@ -676,7 +714,15 @@ function paste-gram --description "Send text, files, or directories to Telegram"
     set -l input_detail "no input"
     if isatty stdin
         if test -n "$positional_args"
-            if test -f "$positional_args[1]"
+            if test (count $positional_args) -gt 1
+                if test -f "$positional_args[1]"; or test -d "$positional_args[1]"
+                    set input_kind "multiple files/directories"
+                    set input_detail (count $positional_args)" positional inputs"
+                else
+                    set input_kind "argument"
+                    set input_detail "argument text (content hidden)"
+                end
+            else if test -f "$positional_args[1]"
                 set input_kind "file"
                 set input_detail "$positional_args[1]"
             else if test -d "$positional_args[1]"
@@ -800,6 +846,9 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                 printf '[paste-gram verbose] curl proxy environment: %s (values hidden)\n' (string join ', ' -- $proxy_env_names) >&2
             else
                 printf '[paste-gram verbose] curl proxy environment: not configured\n' >&2
+            end
+            if test -n "$curl_proxy_override"
+                printf '[paste-gram verbose] inline curl proxy: configured (value hidden)\n' >&2
             end
         end
         printf '[paste-gram verbose] hostname metadata: %s\n' "$include_hostname" >&2
@@ -989,12 +1038,30 @@ function paste-gram --description "Send text, files, or directories to Telegram"
         if test -n "$positional_args"
         #echo "Reading from arguments..."
             if test -f "$positional_args[1]"; or test -d "$positional_args[1]"
+                set -l invalid_input ""
+                for candidate in $positional_args
+                    if not test -f "$candidate"; and not test -d "$candidate"
+                        set invalid_input "$candidate"
+                        break
+                    end
+                end
+                if test -n "$invalid_input"
+                    echo "❌ Multiple file inputs must all be existing files or directories: $invalid_input" >&2
+                    return 1
+                end
+
                 set -f file $positional_args[1]
                 set -l abs_path (realpath "$file")
                 set -l source_path "$abs_path"
                 set -l source_name (basename "$abs_path")
                 set -l is_directory "false"
-                if test -d "$file"
+                set -l is_bundle "false"
+                if test (count $positional_args) -gt 1
+                    set is_bundle "true"
+                    set is_directory "true"
+                    set source_name "paste-gram-files"
+                    echo "Compressing multiple files and directories..."
+                else if test -d "$file"
                     set is_directory "true"
                     echo "Compressing directory..."
                 else
@@ -1005,7 +1072,19 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                 set dir_name (dirname "$abs_path")
                 set file_size 0
 
-                if test "$is_directory" = "true"
+                if test "$is_bundle" = "true"
+                    set -l tar_file "$compressdir/$source_name.tgz"
+                    if not tar -czf "$tar_file" $positional_args
+                        echo "❌ Failed to compress multiple inputs" >&2
+                        return 1
+                    end
+                    set file "$tar_file"
+                    set file_name (basename "$tar_file")
+                    set file_size (__paste_gram_file_size "$file")
+                    if test $status -ne 0
+                        return 1
+                    end
+                else if test "$is_directory" = "true"
                     set -l tar_file "$compressdir/$source_name.tgz"
                     if not tar -czf "$tar_file" -C "$dir_name" "$source_name"
                         echo "❌ Failed to compress directory: $source_path" >&2
@@ -1022,12 +1101,22 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                     if test $status -ne 0
                         return 1
                     end
+                    set file "$abs_path"
                 end
 
                 if test "$verbose" = "true"
-                    printf '[paste-gram verbose] file path: %s\n' "$source_path" >&2
+                    if test "$is_bundle" = "true"
+                        printf '[paste-gram verbose] bundled input paths:\n' >&2
+                        for input_path in $positional_args
+                            printf '  %s\n' (realpath "$input_path") >&2
+                        end
+                    else
+                        printf '[paste-gram verbose] file path: %s\n' "$source_path" >&2
+                    end
                     printf '[paste-gram verbose] file size: %s bytes\n' "$file_size" >&2
-                    if test "$is_directory" = "true"
+                    if test "$is_bundle" = "true"
+                        printf '[paste-gram verbose] multiple-input delivery: archived as %s\n' "$file_name" >&2
+                    else if test "$is_directory" = "true"
                         printf '[paste-gram verbose] directory delivery: archived as %s\n' "$file_name" >&2
                     end
                 end
@@ -1040,7 +1129,12 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                 __paste_gram_append_user_caption "$message_text_file" "$user_caption_file"
                 cat "$head_message_text_file" >> "$message_text_file"
                 if test "$include_path" = "true"
-                    if test "$is_directory" = "true"
+                    if test "$is_bundle" = "true"
+                        printf '<b>PATH:</b>\n' >> "$message_text_file"
+                        for input_path in $positional_args
+                            printf '<u>%s</u>\n' (__paste_gram_display_path (realpath "$input_path")) >> "$message_text_file"
+                        end
+                    else if test "$is_directory" = "true"
                         printf '<b>PATH:</b>\n' >> "$message_text_file"
                         printf '<u>%s</u>\n' "$display_path" >> "$message_text_file"
                     else
@@ -1095,7 +1189,7 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                         if test $use_mtproto = "true"
                             __paste_gram_mtproto_send_long_caption "$user_caption_file" "$verbose" $chat_ids
                         else
-                            __paste_gram_bot_send_long_caption "$api_url" "$token" "$user_caption_file" "$verbose" $chat_ids
+                            __paste_gram_bot_send_long_caption "$api_url" "$token" "$user_caption_file" "$verbose" "$curl_proxy_override" $chat_ids
                         end
                         if test $status -ne 0
                             return 1
@@ -1104,7 +1198,12 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                         set metadata_caption_file (mktemp)
                         cat "$head_message_text_file" > "$metadata_caption_file"
                         if test "$include_path" = "true"
-                            if test "$is_directory" = "true"
+                            if test "$is_bundle" = "true"
+                                printf '<b>PATH:</b>\n' >> "$metadata_caption_file"
+                                for input_path in $positional_args
+                                    printf '<u>%s</u>\n' (__paste_gram_display_path (realpath "$input_path")) >> "$metadata_caption_file"
+                                end
+                            else if test "$is_directory" = "true"
                                 printf '<b>PATH:</b>\n' >> "$metadata_caption_file"
                                 printf '<u>%s</u>\n' "$display_path" >> "$metadata_caption_file"
                             else
@@ -1127,11 +1226,11 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                                 set -l target_chat_id $chat_ids[$idx]
                                 set -l target_label $chat_labels[$idx]
                                 echo "$color_info→ sending chunk "(basename $i)" to $target_label$color_reset"
-                                set response (__paste_gram_bot_request "$api_url" "$token" "sendDocument" "$target_label" "$verbose" \
+                                set response (__paste_gram_bot_request "$api_url" "$token" "sendDocument" "$target_label" "$verbose" "$curl_proxy_override" \
                                     --form-string chat_id="$target_chat_id" \
-                                    -F document=@"$i" \
-                                    -F caption="$(cat $upload_caption_file)" \
-                                    -F parse_mode="HTML" \
+                                    -F "document=@$i" \
+                                    --form-string caption="$(cat "$upload_caption_file")" \
+                                    --form-string parse_mode="HTML" \
                                     --connect-timeout 10 \
                                     --max-time 30)
                                 set request_status $status
@@ -1166,11 +1265,11 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                             set -l target_chat_id $chat_ids[$idx]
                             set -l target_label $chat_labels[$idx]
                             echo "$color_info→ sending file $file_name to $target_label$color_reset"
-                            set response (__paste_gram_bot_request "$api_url" "$token" "sendDocument" "$target_label" "$verbose" \
+                            set response (__paste_gram_bot_request "$api_url" "$token" "sendDocument" "$target_label" "$verbose" "$curl_proxy_override" \
                                 --form-string chat_id="$target_chat_id" \
-                                -F document=@"$file" \
-                                -F caption="$(cat $upload_caption_file)" \
-                                -F parse_mode="HTML" \
+                                -F "document=@$file" \
+                                --form-string caption="$(cat "$upload_caption_file")" \
+                                --form-string parse_mode="HTML" \
                                 --connect-timeout 10 \
                                 --max-time 30)
                             set request_status $status
@@ -1246,7 +1345,7 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                             set -l target_chat_id $chat_ids[$idx]
                             set -l target_label $chat_labels[$idx]
                             echo "$color_info→ sending chunk "(basename $chunk)" to $target_label$color_reset"
-                            set response (__paste_gram_bot_request "$api_url" "$token" "sendMessage" "$target_label" "$verbose" \
+                            set response (__paste_gram_bot_request "$api_url" "$token" "sendMessage" "$target_label" "$verbose" "$curl_proxy_override" \
                                 --data-urlencode chat_id="$target_chat_id" \
                                 --data-urlencode text="$(cat $message_text_file)" \
                                 -d parse_mode="HTML" \
@@ -1324,7 +1423,7 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                     set -l target_chat_id $chat_ids[$idx]
                     set -l target_label $chat_labels[$idx]
                     echo "$color_info→ sending chunk "(basename $chunk)" to $target_label$color_reset"
-                    set response (__paste_gram_bot_request "$api_url" "$token" "sendMessage" "$target_label" "$verbose" \
+                    set response (__paste_gram_bot_request "$api_url" "$token" "sendMessage" "$target_label" "$verbose" "$curl_proxy_override" \
                         --data-urlencode chat_id="$target_chat_id" \
                         --data-urlencode text="$(cat $chunk)" \
                         -d parse_mode="HTML" \

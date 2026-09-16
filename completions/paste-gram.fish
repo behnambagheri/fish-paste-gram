@@ -21,9 +21,11 @@ function __paste_gram_completion_is_piped
     string match -q -r '\|[[:space:]]*(command[[:space:]]+)?(ptg|paste-gram)([[:space:]]|$)' -- "$commandline_prefix"
 end
 
-complete -c paste-gram -f
+complete -c paste-gram -n "__paste_gram_completion_is_piped" -f
 complete -c paste-gram -s h -l help -d "Show help"
 complete -c paste-gram -s m -l message -d "Add a caption; opens the default editor when omitted"
+complete -c paste-gram -l api-url -d "Override Bot API URL for this command" -r
+complete -c paste-gram -l proxy -d "Use a curl proxy for Bot API requests" -r
 complete -c paste-gram -l hostname -l include-hostname -d "Override hostname metadata" -x -a "true false"
 complete -c paste-gram -l last-command -l include-command -d "Override command metadata" -x -a "true false"
 complete -c paste-gram -l include-path -d "Override file or directory path metadata" -x -a "true false"
@@ -32,5 +34,3 @@ complete -c paste-gram -s V -l version -d "Show version"
 complete -c paste-gram -s i -l id -o id -d "Override chat id (numeric, @user, or alias; repeatable)" -x -a "(__paste_gram_id_candidates)"
 complete -c paste-gram -l mtproto -l personal -d "Send via personal account (MTProto)"
 complete -c paste-gram -l bot -l bot-api -d "Send via Bot API for this call"
-complete -c paste-gram -n "__fish_is_first_arg; and not __paste_gram_completion_is_piped; and not string match -qr '^-.*' -- (commandline -ct)" -a "(__fish_complete_path)" -d "File or directory to send"
-complete -c paste-gram -n "__fish_seen_argument -s m -l message; and not __paste_gram_completion_is_piped; and not string match -qr '^-.*' -- (commandline -ct)" -a "(__fish_complete_path)" -d "File or directory to send"

@@ -19,6 +19,8 @@
 - Inline `--hostname`, `--last-command`, and `--include-path` switches can override their environment defaults for one command.
 - Generated caption sections now have consistent blank-line spacing.
 - Fish completions no longer suggest files or directories when `ptg` or `paste-gram` is used after a pipe.
+- Bot API URL and curl proxy can be overridden per command with `--api-url`, `--bot-api <url>`, and `--proxy`.
+- Multiple file, directory, and glob inputs are compressed into one `.tgz` upload with each source path listed separately in the caption.
 
 ### Fixed
 - MTProto proxy handling now uses the current Telethon `python-socks` dependency instead of requiring PySocks.

@@ -208,7 +208,15 @@ ptg "Personal default message"
 ```
 
 Use `--bot` or `--bot-api` to force Bot API for one command. Use `--mtproto` or `--personal` to
-force MTProto for one command. The older `PASTEGRAM_USE_MT=true|false` variable remains supported.
+force MTProto for one command. Add a URL after `--bot-api`/`--bot`, or use `--api-url`, to override
+`TELEGRAM_API_URL` for one command. Use `--proxy` to pass a curl proxy URL for Bot API requests:
+
+```fish
+ptg --bot-api https://api.telegram.org "Bot API message"
+ptg --api-url https://api.telegram.org --proxy socks5h://127.0.0.1:1080 "Through a proxy"
+```
+
+The older `PASTEGRAM_USE_MT=true|false` variable remains supported.
 
 ---
 
@@ -261,6 +269,9 @@ ptg ~/Documents/log.txt
 # Archive and send a directory (large archives are chunked automatically)
 ptg ~/Documents/project
 
+# Compress and send multiple files/directories as one archive
+ptg ~/Documents/a.json ~/Documents/b.json ~/Documents/project ~/yamls/*.yaml
+
 # Add a short caption to a file or directory
 ptg -m "Updated configuration" ~/Documents/project
 
@@ -276,9 +287,10 @@ ptg -v ~/Documents/log.txt
 ptg -v --id @my_other_chat "debug me"
 ```
 
-If `PASTEGRAM_HOSTNAME` or `PASTEGRAM_LAST_COMMAND` is set to `"true"`, those will be prepended to your message or file caption. `PASTEGRAM_INCLUDE_PATH` defaults to `true`; set it to `false` to omit the file or directory path. File captions omit redundant labels, shorten paths inside `$HOME` to `~/…`, and show directories using the source path while Telegram displays the archive filename.
+If `PASTEGRAM_HOSTNAME` or `PASTEGRAM_LAST_COMMAND` is set to `"true"`, those will be prepended to your message or file caption. `PASTEGRAM_INCLUDE_PATH` defaults to `true`; set it to `false` to omit the file or directory path. File captions omit redundant labels, shorten paths inside `$HOME` to `~/…`, and show directories using the source path while Telegram displays the archive filename. When multiple files or directories are provided, paste-gram creates one `.tgz` archive and lists every original input under `PATH:` on its own line. Fish expands globs such as `~/yamls/*.yaml` before paste-gram receives them.
 Use `-m`/`--message` with inline text for a short caption. If the option has no text value, paste-gram opens `$GIT_EDITOR`, then `$VISUAL`, then `$EDITOR`, then `vi`; the saved text is added above the generated metadata under a bold `Caption:` title. Caption text is escaped as plain text for Telegram HTML mode. If the complete document caption is too long for Telegram, the full user caption is sent as text before the file and only the compact metadata remains attached to the document.
 Use `--hostname`, `--last-command`, and `--include-path` with `true` or `false` to override `PASTEGRAM_HOSTNAME`, `PASTEGRAM_LAST_COMMAND`, and `PASTEGRAM_INCLUDE_PATH` for one command. The `--include-hostname` and `--include-command` spellings are accepted as aliases. The inline values take precedence over the environment variables.
+Use `--api-url <url>` or `--bot-api <url>` to override `TELEGRAM_API_URL` for one Bot API command. Use `--proxy <url>` to configure curl's proxy for that command; this is separate from the MTProto proxy settings.
 Use `-v`/`--verbose` with any send form to print the selected mode, input type, resolved target, API URL, proxy status, runtime settings, and the Telegram response. Secrets such as bot tokens, API hashes, proxy passwords, and MTProxy secrets are redacted. `-V`/`--version` prints only the version.
 
 ---
