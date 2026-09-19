@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- `-m`/`--message` now sends a standalone message when no file, positional text, or stdin input is supplied.
 - Configurable default transport with `PASTEGRAM_DEFAULT_MODE=bot|mtproto`.
 - Directory uploads are archived as `.tgz` files and chunked when the archive exceeds the Bot API upload threshold.
 - Optional `-m`/`--message` captions, with inline text or default-editor support for long captions; captions beyond Telegram's document limit are delivered as text before the file.

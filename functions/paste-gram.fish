@@ -471,7 +471,7 @@ except Exception as exc:
 end
 
 function paste-gram --description "Send text, files, or directories to Telegram" --argument cmdArg
-    set -l pastegram_version "v1.7.0"
+    set -l pastegram_version "v1.7.1"
     set -l token $TELEGRAM_TOKEN
     set -l chat_id $TELEGRAM_CHAT_ID
     set -l api_url "https://api.telegram.org"
@@ -512,6 +512,7 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                 printf "  paste-gram /path/one /path/two        # compress and send multiple files/directories as one archive\n"
                 printf "  paste-gram -m \"caption\" /path/to/file # add a caption to a file or directory\n"
                 printf "  paste-gram -m /path/to/file            # edit a long caption in the default editor\n"
+                printf "  paste-gram -m \"message\"             # send a standalone message from -m/--message\n"
                 printf "  paste-gram --id @other_chat \"msg\"    # override TELEGRAM_CHAT_ID (numeric, alias, repeatable)\n"
                 printf "  paste-gram --mtproto \"msg\"           # send via personal account (MTProto)\n"
                 printf "  paste-gram --bot [api-url] \"msg\"    # force Bot API; optionally override its URL\n"
@@ -523,7 +524,7 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                 printf "MTProto env vars (optional): TELEGRAM_MT_PYTHON=<path> TELEGRAM_MT_SESSION=<path> TELEGRAM_MT_PROXY=<url> TELEGRAM_MT_DELAY_SECONDS=<seconds>\n"
                 printf "MTProto safety overrides: PASTEGRAM_MT_ALLOW_EXTERNAL=true PASTEGRAM_MT_ALLOW_BROADCAST=true\n"
                 printf "Mode env vars: PASTEGRAM_DEFAULT_MODE=bot|mtproto; PASTEGRAM_USE_MT=true|false is supported for compatibility\n"
-                printf "Flags (optional): -m|--message [caption], --api-url <url>, --proxy <url>, --hostname <true|false>, --last-command <true|false>, --include-path <true|false>, -v|--verbose, --id|-i <chat-id|alias> (repeatable), --mtproto/--personal, --bot/--bot-api [api-url]\n"
+                printf "Flags (optional): -m|--message [caption/message], --api-url <url>, --proxy <url>, --hostname <true|false>, --last-command <true|false>, --include-path <true|false>, -v|--verbose, --id|-i <chat-id|alias> (repeatable), --mtproto/--personal, --bot/--bot-api [api-url]\n"
                 printf "Version: -V|--version\n"
                 printf "Dependencies: fish 3+, curl, jq, tar, split, stat, Python with telethon (MTProto), python-socks[asyncio] (MTProto proxy)\n"
                 return 0
@@ -982,6 +983,7 @@ function paste-gram --description "Send text, files, or directories to Telegram"
     set -l compressdir (mktemp -d)
     set -l user_caption_file ""
     set -l metadata_caption_file ""
+    set -l caption_only_message "false"
 
     if test "$user_caption_requested" = "true"
         set user_caption_file (mktemp)
@@ -1010,6 +1012,12 @@ function paste-gram --description "Send text, files, or directories to Telegram"
         end
     end
 
+    # With no other input, -m/--message is a standalone text message rather
+    # than a document caption that would otherwise have nowhere to attach.
+    if isatty stdin; and not test -n "$positional_args"; and test -s "$user_caption_file"
+        set caption_only_message "true"
+    end
+
 
 
 
@@ -1035,9 +1043,9 @@ function paste-gram --description "Send text, files, or directories to Telegram"
 #++++++++++++++++++++++++++++++++++++++++++
 
     if isatty stdin
-        if test -n "$positional_args"
+        if test -n "$positional_args"; or test "$caption_only_message" = "true"
         #echo "Reading from arguments..."
-            if test -f "$positional_args[1]"; or test -d "$positional_args[1]"
+            if test "$caption_only_message" != "true"; and begin; test -f "$positional_args[1]"; or test -d "$positional_args[1]"; end
                 set -l invalid_input ""
                 for candidate in $positional_args
                     if not test -f "$candidate"; and not test -d "$candidate"
@@ -1294,16 +1302,22 @@ function paste-gram --description "Send text, files, or directories to Telegram"
 
             else
 #                 echo "string from argument: $argv"
-                set -l message $positional_args[1]
-                echo -e "$message" >> "$body_meesage_text_file"
-                if test (uname) = "Darwin"
+                if test "$caption_only_message" = "true"
+                    sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' "$user_caption_file" >> "$body_meesage_text_file"
+                else
+                    set -l message $positional_args[1]
+                    echo -e "$message" >> "$body_meesage_text_file"
+                end
+                if test "$caption_only_message" != "true"; and test (uname) = "Darwin"
                     sed -i '' 's#<#-#g' $body_meesage_text_file
                     sed -i '' 's#>#-#g' $body_meesage_text_file
-                else
+                else if test "$caption_only_message" != "true"
                     sed -i 's#<#-#g' $body_meesage_text_file
                     sed -i 's#>#-#g' $body_meesage_text_file
                 end
-                __paste_gram_append_user_caption "$message_text_file" "$user_caption_file"
+                if test "$caption_only_message" != "true"
+                    __paste_gram_append_user_caption "$message_text_file" "$user_caption_file"
+                end
                 cat "$head_message_text_file" >> "$message_text_file"
                 echo -e "<pre>" >> "$message_text_file"
                 cat "$body_meesage_text_file" >> "$message_text_file"
