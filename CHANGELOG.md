@@ -19,9 +19,11 @@
 - `PASTEGRAM_INCLUDE_PATH=false` can omit generated file or directory paths from captions.
 - Inline `--hostname`, `--last-command`, and `--include-path` switches can override their environment defaults for one command.
 - Generated caption sections now have consistent blank-line spacing.
+- Multi-input `PATH:` captions now show each source as a separate bullet.
 - Fish completions no longer suggest files or directories when `ptg` or `paste-gram` is used after a pipe.
 - Bot API URL and curl proxy can be overridden per command with `--api-url`, `--bot-api <url>`, and `--proxy`.
 - Multiple file, directory, and glob inputs are compressed into one `.tgz` upload with each source path listed separately in the caption.
+- Multi-input archive names can be set with `--file-name`, or chosen at an interactive prompt with a timestamped suggested default.
 
 ### Fixed
 - MTProto proxy handling now uses the current Telethon `python-socks` dependency instead of requiring PySocks.

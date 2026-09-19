@@ -272,6 +272,9 @@ ptg ~/Documents/project
 # Compress and send multiple files/directories as one archive
 ptg ~/Documents/a.json ~/Documents/b.json ~/Documents/project ~/yamls/*.yaml
 
+# Choose the compressed archive name (.tgz is added automatically)
+ptg --file-name release-bundle ~/Documents/a.json ~/Documents/project
+
 # Add a short caption to a file or directory
 ptg -m "Updated configuration" ~/Documents/project
 
@@ -291,7 +294,7 @@ ptg -v ~/Documents/log.txt
 ptg -v --id @my_other_chat "debug me"
 ```
 
-If `PASTEGRAM_HOSTNAME` or `PASTEGRAM_LAST_COMMAND` is set to `"true"`, those will be prepended to your message or file caption. `PASTEGRAM_INCLUDE_PATH` defaults to `true`; set it to `false` to omit the file or directory path. File captions omit redundant labels, shorten paths inside `$HOME` to `~/…`, and show directories using the source path while Telegram displays the archive filename. When multiple files or directories are provided, paste-gram creates one `.tgz` archive and lists every original input under `PATH:` on its own line. Fish expands globs such as `~/yamls/*.yaml` before paste-gram receives them.
+If `PASTEGRAM_HOSTNAME` or `PASTEGRAM_LAST_COMMAND` is set to `"true"`, those will be prepended to your message or file caption. `PASTEGRAM_INCLUDE_PATH` defaults to `true`; set it to `false` to omit the file or directory path. File captions omit redundant labels, shorten paths inside `$HOME` to `~/…`, and show directories using the source path while Telegram displays the archive filename. When multiple files or directories are provided, paste-gram creates one `.tgz` archive and lists every original input as a separate bullet under the bold `PATH:` heading. Fish expands globs such as `~/yamls/*.yaml` before paste-gram receives them. Pass `--file-name <name>` to name the archive; otherwise, paste-gram prompts with a timestamped suggestion such as `paste-gram-2026-09-20-143052`, which Enter accepts. The `.tgz` suffix is added automatically. In non-interactive usage, set `--file-name` explicitly.
 Use `-m`/`--message` with inline text for a short caption. If the option has no text value, paste-gram opens `$GIT_EDITOR`, then `$VISUAL`, then `$EDITOR`, then `vi`; the saved text is added above the generated metadata under a bold `Caption:` title. When there is no file, positional text, or stdin input, the `-m`/`--message` text is sent as a standalone message instead. Caption text is escaped as plain text for Telegram HTML mode. If the complete document caption is too long for Telegram, the full user caption is sent as text before the file and only the compact metadata remains attached to the document.
 Use `--hostname`, `--last-command`, and `--include-path` with `true` or `false` to override `PASTEGRAM_HOSTNAME`, `PASTEGRAM_LAST_COMMAND`, and `PASTEGRAM_INCLUDE_PATH` for one command. The `--include-hostname` and `--include-command` spellings are accepted as aliases. The inline values take precedence over the environment variables.
 Use `--api-url <url>` or `--bot-api <url>` to override `TELEGRAM_API_URL` for one Bot API command. Use `--proxy <url>` to configure curl's proxy for that command; this is separate from the MTProto proxy settings.

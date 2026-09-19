@@ -26,6 +26,7 @@ complete -c paste-gram -s h -l help -d "Show help"
 complete -c paste-gram -s m -l message -d "Add a file caption or send a standalone message; opens the editor when omitted"
 complete -c paste-gram -l api-url -d "Override Bot API URL for this command" -r
 complete -c paste-gram -l proxy -d "Use a curl proxy for Bot API requests" -r
+complete -c paste-gram -l file-name -d "Name the compressed archive for multiple inputs" -x
 complete -c paste-gram -l hostname -l include-hostname -d "Override hostname metadata" -x -a "true false"
 complete -c paste-gram -l last-command -l include-command -d "Override command metadata" -x -a "true false"
 complete -c paste-gram -l include-path -d "Override file or directory path metadata" -x -a "true false"

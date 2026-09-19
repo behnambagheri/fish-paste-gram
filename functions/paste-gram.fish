@@ -483,6 +483,8 @@ function paste-gram --description "Send text, files, or directories to Telegram"
     end
     set -l api_url_override ""
     set -l curl_proxy_override ""
+    set -l bundle_file_name_override ""
+    set -l bundle_file_name_requested "false"
     set -l override_chat_ids
     set -l positional_args
     set -l id_map_path (set -q PASTEGRAM_ID_MAP; and echo $PASTEGRAM_ID_MAP; or echo "$HOME/.config/paste-gram/chat_ids.json")
@@ -510,6 +512,7 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                 printf "  echo \"from pipe\" | paste-gram        # send stdin\n"
                 printf "  paste-gram /path/to/file              # send file or directory (auto-archive/chunk >50MB)\n"
                 printf "  paste-gram /path/one /path/two        # compress and send multiple files/directories as one archive\n"
+                printf "  paste-gram --file-name backup /one /two # name the compressed multi-input archive\n"
                 printf "  paste-gram -m \"caption\" /path/to/file # add a caption to a file or directory\n"
                 printf "  paste-gram -m /path/to/file            # edit a long caption in the default editor\n"
                 printf "  paste-gram -m \"message\"             # send a standalone message from -m/--message\n"
@@ -524,7 +527,7 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                 printf "MTProto env vars (optional): TELEGRAM_MT_PYTHON=<path> TELEGRAM_MT_SESSION=<path> TELEGRAM_MT_PROXY=<url> TELEGRAM_MT_DELAY_SECONDS=<seconds>\n"
                 printf "MTProto safety overrides: PASTEGRAM_MT_ALLOW_EXTERNAL=true PASTEGRAM_MT_ALLOW_BROADCAST=true\n"
                 printf "Mode env vars: PASTEGRAM_DEFAULT_MODE=bot|mtproto; PASTEGRAM_USE_MT=true|false is supported for compatibility\n"
-                printf "Flags (optional): -m|--message [caption/message], --api-url <url>, --proxy <url>, --hostname <true|false>, --last-command <true|false>, --include-path <true|false>, -v|--verbose, --id|-i <chat-id|alias> (repeatable), --mtproto/--personal, --bot/--bot-api [api-url]\n"
+                printf "Flags (optional): -m|--message [caption/message], --file-name <name>, --api-url <url>, --proxy <url>, --hostname <true|false>, --last-command <true|false>, --include-path <true|false>, -v|--verbose, --id|-i <chat-id|alias> (repeatable), --mtproto/--personal, --bot/--bot-api [api-url]\n"
                 printf "Version: -V|--version\n"
                 printf "Dependencies: fish 3+, curl, jq, tar, split, stat, Python with telethon (MTProto), python-socks[asyncio] (MTProto proxy)\n"
                 return 0
@@ -548,6 +551,25 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                 set i (math "$i + 1")
             case "--proxy=*"
                 set curl_proxy_override (string replace -- "--proxy=" "" -- "$arg")
+            case "--file-name"
+                if test (math "$i + 1") -gt $argc
+                    echo "❌ --file-name requires an archive name" >&2
+                    return 1
+                end
+                set bundle_file_name_override $argv[(math "$i + 1")]
+                if test -z "$bundle_file_name_override"
+                    echo "❌ --file-name requires a non-empty archive name" >&2
+                    return 1
+                end
+                set bundle_file_name_requested "true"
+                set i (math "$i + 1")
+            case "--file-name=*"
+                set bundle_file_name_override (string replace -- "--file-name=" "" -- "$arg")
+                if test -z "$bundle_file_name_override"
+                    echo "❌ --file-name requires a non-empty archive name" >&2
+                    return 1
+                end
+                set bundle_file_name_requested "true"
             case "--hostname" "--include-hostname"
                 if test (math "$i + 1") -gt $argc
                     echo "❌ $arg requires true or false" >&2
@@ -1058,6 +1080,11 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                     return 1
                 end
 
+                if test (count $positional_args) -eq 1; and test "$bundle_file_name_requested" = "true"
+                    echo "❌ --file-name is only used when sending multiple files or directories" >&2
+                    return 1
+                end
+
                 set -f file $positional_args[1]
                 set -l abs_path (realpath "$file")
                 set -l source_path "$abs_path"
@@ -1081,8 +1108,33 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                 set file_size 0
 
                 if test "$is_bundle" = "true"
-                    set -l tar_file "$compressdir/$source_name.tgz"
-                    if not tar -czf "$tar_file" $positional_args
+                    set -l timestamp (date '+%Y-%m-%d-%H%M%S')
+                    set -l suggested_archive_name "paste-gram-$timestamp"
+                    if test "$bundle_file_name_requested" = "true"
+                        set suggested_archive_name "$bundle_file_name_override"
+                    else
+                        set -l archive_prompt "Compressed archive name [$suggested_archive_name]: "
+                        if not read --prompt-str "$archive_prompt" bundle_file_name_override
+                            echo "❌ Could not read an archive name; pass --file-name when running non-interactively" >&2
+                            return 1
+                        end
+                        if test -n "$bundle_file_name_override"
+                            set suggested_archive_name "$bundle_file_name_override"
+                        end
+                    end
+
+                    if test -z "$suggested_archive_name"; or test "$suggested_archive_name" = "."; or test "$suggested_archive_name" = ".."; or string match -q '*/*' -- "$suggested_archive_name"; or string match -qr '[\r\n]' -- "$suggested_archive_name"
+                        echo "❌ Archive name must be a simple filename without directory separators" >&2
+                        return 1
+                    end
+                    set suggested_archive_name (string replace -r '\.tgz$' '' -- "$suggested_archive_name")
+                    if test -z "$suggested_archive_name"
+                        echo "❌ Archive name cannot be empty" >&2
+                        return 1
+                    end
+
+                    set -l tar_file "$compressdir/$suggested_archive_name.tgz"
+                    if not tar -czf "$tar_file" -- $positional_args
                         echo "❌ Failed to compress multiple inputs" >&2
                         return 1
                     end
@@ -1138,9 +1190,9 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                 cat "$head_message_text_file" >> "$message_text_file"
                 if test "$include_path" = "true"
                     if test "$is_bundle" = "true"
-                        printf '<b>PATH:</b>\n' >> "$message_text_file"
+                        printf '<b>PATH:</b>\n\n' >> "$message_text_file"
                         for input_path in $positional_args
-                            printf '<u>%s</u>\n' (__paste_gram_display_path (realpath "$input_path")) >> "$message_text_file"
+                            printf '%s\n' "- <u>"(__paste_gram_display_path (realpath "$input_path"))"</u>" >> "$message_text_file"
                         end
                     else if test "$is_directory" = "true"
                         printf '<b>PATH:</b>\n' >> "$message_text_file"
@@ -1207,9 +1259,9 @@ function paste-gram --description "Send text, files, or directories to Telegram"
                         cat "$head_message_text_file" > "$metadata_caption_file"
                         if test "$include_path" = "true"
                             if test "$is_bundle" = "true"
-                                printf '<b>PATH:</b>\n' >> "$metadata_caption_file"
+                                printf '<b>PATH:</b>\n\n' >> "$metadata_caption_file"
                                 for input_path in $positional_args
-                                    printf '<u>%s</u>\n' (__paste_gram_display_path (realpath "$input_path")) >> "$metadata_caption_file"
+                                    printf '%s\n' "- <u>"(__paste_gram_display_path (realpath "$input_path"))"</u>" >> "$metadata_caption_file"
                                 end
                             else if test "$is_directory" = "true"
                                 printf '<b>PATH:</b>\n' >> "$metadata_caption_file"
