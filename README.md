@@ -1,35 +1,62 @@
-# 📬 paste-gram
+# paste-gram: send files, command output, and text to Telegram from your terminal
 
-Send text, files, or directories to your Telegram chat directly from the Fish shell!
+[![Fish shell](https://img.shields.io/badge/shell-fish-4AAE47?logo=gnubash&logoColor=white)](https://fishshell.com/)
+[![Fisher plugin](https://img.shields.io/badge/install-fisher-blue)](https://github.com/jorgebucaran/fisher)
+[![Telegram Bot API](https://img.shields.io/badge/Telegram-Bot%20API%20%7C%20MTProto-26A5E4?logo=telegram&logoColor=white)](https://core.telegram.org/bots/api)
+[![Latest release](https://img.shields.io/github/v/release/behnambagheri/fish-paste-gram)](https://github.com/behnambagheri/fish-paste-gram/releases)
+[![License](https://img.shields.io/github/license/behnambagheri/fish-paste-gram)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/behnambagheri/fish-paste-gram?style=social)](https://github.com/behnambagheri/fish-paste-gram/stargazers)
 
-`paste-gram` is a lightweight Fish plugin that sends any input (text, files, or directories) to your Telegram bot using the Bot API, with an optional MTProto mode for personal-account sends. You can pipe output from other commands or pass messages/files/directories directly. Perfect for quick remote sharing, logging, or personal note-taking!
+**paste-gram** (alias `ptg`) is a command-line tool and [Fish shell](https://fishshell.com/) plugin that sends text, piped command output, files, and whole directories to a Telegram chat. It uses the Telegram Bot API by default, can optionally send as your personal account through MTProto, and automatically compresses and splits uploads larger than Telegram's 50 MB bot limit. It works on Linux and macOS, over SSH, in cron jobs and CI, and from AI coding agents such as Claude Code and Codex.
 
-### 🚀 Recent updates
-- Chat alias map now supports `chat_id` + `username` objects (username preferred).
-- Optional MTProto mode to send as your personal account (`--mtproto`/`--personal`).
-- Optional user captions with `-m`/`--message`, including long captions written in your default editor.
-- Send to multiple chats at once with repeatable `--id`/`-i` or comma-separated aliases.
-- Default install creates `~/.config/paste-gram/chat_ids.json` with placeholder aliases only (friend1/friend2/demo_channel).
-- Fish completions for `paste-gram` and `ptg`.
-- Directories are automatically archived as `.tgz` files; archives over 50MB are split into 49MB chunks.
-- Files over 50MB are auto-compressed (`tar.gz`) and split into 49MB chunks.
-- Compatible with both Linux and macOS with compact HTML captions for host/command/path.
+Think of it as a **terminal-to-Telegram pastebin**: get logs off a remote server, save snippets, or get notified when a long command finishes.
+
+```fish
+fisher install behnambagheri/fish-paste-gram   # install
+make build 2>&1 | ptg                           # pipe any command output to Telegram
+ptg ~/logs/app.log                              # send a file
+ptg ~/Documents/project                         # send a directory (auto .tgz, auto-split over 50 MB)
+long_task; ptg -m "long_task finished"          # get a notification when a job is done
+```
+
+**Contents:** [Use cases](#-use-cases) · [Features](#-features) · [Installation](#%EF%B8%8F-installation) · [Usage](#-usage) · [MTProto](#-personal-account-mtproto) · [AI agents](#-use-with-ai-agents) · [Environment variables](#-environment-variables) · [FAQ](#-faq)
+
+---
+
+## 💡 Use cases
+
+- **Send server logs to Telegram**: pull a log file or `journalctl` output off a remote machine over SSH without `scp`.
+- **Pipe command output to Telegram**: `kubectl get pods | ptg`, `docker logs app | ptg`, `df -h | ptg`.
+- **Telegram notifications from the shell**: alert yourself when a build, backup, deploy, or cron job finishes.
+- **Share large files and folders**: directories are archived as `.tgz`, and anything over 50 MB is split into 49 MB parts that you can rejoin with `cat` (Bot API mode).
+- **Personal notes and snippets**: drop code, configs, or links into your Saved Messages from any terminal.
+- **AI agent delivery**: let Claude Code, Codex, or another agent send you reports and artifacts on Telegram.
 
 ---
 
 ## ✨ Features
 
-- 🐟 Native Fish shell function
-- 📦 Works with `fisher` plugin manager
-- 🧾 Sends:
-  - Messages (via direct argument or stdin)
-  - Files and directories (as documents with optional caption; directories are archived automatically)
-- 🖥️ Can prepend hostname and/or command line (configurable)
-- 🔐 Gets config from environment variables
-- 🧭 Built-in Fish completions for commands and `--id` aliases
-- 🆔 Target either numeric chat IDs or usernames (channels) with `--id` / `TELEGRAM_CHAT_ID`
-- 👤 Optional MTProto mode to send as your personal account
-- 🔎 Verbose diagnostics with `-v`, including the effective mode, endpoint/proxy, and Telegram response
+- 🐟 Native Fish shell function, installable with `fisher`
+- 🧾 Sends messages (argument or stdin), files, directories, and multiple inputs bundled into one archive
+- 📦 Automatic `tar.gz` compression and 49 MB chunking for files over Telegram's 50 MB bot upload limit
+- 🖥️ Optional hostname, command line, and path in captions
+- 📝 Captions with `-m`/`--message`, editor support for long captions, and Telegram HTML formatting with `--html`
+- 👥 Send to several chats at once with repeatable `--id` or chat aliases from a JSON map
+- 👤 Optional MTProto mode to send as your personal account (defaults to Saved Messages)
+- 🌐 Custom Bot API URL and HTTP/SOCKS proxy support, including MTProxy for MTProto
+- 🧭 Built-in Fish completions for flags and `--id` aliases
+- 🤖 Agent-friendly: an Agent Skill, an MCP server, and predictable non-interactive behavior for Claude Code, Codex, Cursor, and other AI agents
+- 🔎 Verbose diagnostics with `-v`, with secrets redacted
+
+### 🚀 Recent updates
+
+See [CHANGELOG.md](CHANGELOG.md) for the full history. Highlights:
+
+- Telegram HTML formatting for messages and captions with `--html`.
+- Multiple files, directories, and globs bundled into one named `.tgz` upload.
+- Agent Skill, MCP server, and Claude Code plugin for AI agents.
+- MTProto personal-account mode with safety guardrails and proxy support.
+- Per-command overrides for the Bot API URL, curl proxy, and caption metadata.
 
 ---
 
@@ -38,7 +65,6 @@ Send text, files, or directories to your Telegram chat directly from the Fish sh
 - Fish shell 3.0 or higher
 - `curl`
 - `jq`
-- `curl`
 - `tar`
 - `split`
 - Telegram bot with a valid token
@@ -285,6 +311,10 @@ ptg -m ~/Documents/project
 ptg -m "Hello"
 ptg --message "Hello again"
 
+# Render HTML formatting in a message or file caption
+ptg --html -m '<b>Hi</b>'
+ptg --html --message '<b>Updated</b> <i>configuration</i>' ./config.yaml
+
 # Override metadata defaults for one command
 ptg --last-command false --hostname true --include-path false ~/Documents/project
 
@@ -295,10 +325,105 @@ ptg -v --id @my_other_chat "debug me"
 ```
 
 If `PASTEGRAM_HOSTNAME` or `PASTEGRAM_LAST_COMMAND` is set to `"true"`, those will be prepended to your message or file caption. `PASTEGRAM_INCLUDE_PATH` defaults to `true`; set it to `false` to omit the file or directory path. File captions omit redundant labels, shorten paths inside `$HOME` to `~/…`, and show directories using the source path while Telegram displays the archive filename. When multiple files or directories are provided, paste-gram creates one `.tgz` archive and lists every original input as a separate bullet under the bold `PATH:` heading. Fish expands globs such as `~/yamls/*.yaml` before paste-gram receives them. Pass `--file-name <name>` to name the archive; otherwise, paste-gram prompts with a timestamped suggestion such as `paste-gram-2026-09-20-143052`, which Enter accepts. The `.tgz` suffix is added automatically. In non-interactive usage, set `--file-name` explicitly.
-Use `-m`/`--message` with inline text for a short caption. If the option has no text value, paste-gram opens `$GIT_EDITOR`, then `$VISUAL`, then `$EDITOR`, then `vi`; the saved text is added above the generated metadata under a bold `Caption:` title. When there is no file, positional text, or stdin input, the `-m`/`--message` text is sent as a standalone message instead. Caption text is escaped as plain text for Telegram HTML mode. If the complete document caption is too long for Telegram, the full user caption is sent as text before the file and only the compact metadata remains attached to the document.
+Use `-m`/`--message` with inline text for a short caption. If the option has no text value, paste-gram opens `$GIT_EDITOR`, then `$VISUAL`, then `$EDITOR`, then `vi`; the saved text is added above the generated metadata under a bold `Caption:` title. When there is no file, positional text, or stdin input, the `-m`/`--message` text is sent as a standalone message instead. By default, caption text is escaped as plain text for Telegram HTML mode. Add `--html` to interpret the text from `-m`/`--message` as [Telegram HTML](https://core.telegram.org/bots/api#html-style): `<b>Hi</b>` renders **Hi** in bold, outside the default code block. This works with inline text, editor input, and file/directory captions in both Bot API and MTProto mode. Use balanced tags supported by your transport and encode literal `&`, `<`, and `>` as `&amp;`, `&lt;`, and `&gt;`. Long formatted messages preserve tags, entities, and Unicode across chunks. `--html` requires `-m`/`--message`; positional and piped content retain their existing code-block behavior. If the complete document caption is too long for Telegram, the full user caption is sent as text before the file and only the compact metadata remains attached to the document.
 Use `--hostname`, `--last-command`, and `--include-path` with `true` or `false` to override `PASTEGRAM_HOSTNAME`, `PASTEGRAM_LAST_COMMAND`, and `PASTEGRAM_INCLUDE_PATH` for one command. The `--include-hostname` and `--include-command` spellings are accepted as aliases. The inline values take precedence over the environment variables.
 Use `--api-url <url>` or `--bot-api <url>` to override `TELEGRAM_API_URL` for one Bot API command. Use `--proxy <url>` to configure curl's proxy for that command; this is separate from the MTProto proxy settings.
 Use `-v`/`--verbose` with any send form to print the selected mode, input type, resolved target, API URL, proxy status, runtime settings, and the Telegram response. Secrets such as bot tokens, API hashes, proxy passwords, and MTProxy secrets are redacted. `-V`/`--version` prints only the version.
+
+---
+
+## 🤖 Use with AI agents
+
+paste-gram is built to be used by AI coding agents such as Claude Code, Codex, Cursor, and Claude Desktop. Ask your agent to "send me the report on Telegram" and the file arrives in your chat. It is agent-friendly in three ways:
+
+- **Agent Skill** ([`skills/paste-gram/SKILL.md`](skills/paste-gram/SKILL.md)): teaches skill-aware agents when and how to call paste-gram safely.
+- **MCP server** ([`mcp-server/`](mcp-server/paste_gram_mcp.py)): exposes `send_message`, `send_files`, `list_targets`, and `check_setup` as tools for any MCP client.
+- **Predictable CLI**: no prompts or editors in non-interactive shells, clear errors, and non-zero exit codes on failure. A [`llms.txt`](llms.txt) summary is included for agents that read project docs.
+
+### Quick start for agents
+
+First install paste-gram and set `TELEGRAM_TOKEN` and `TELEGRAM_CHAT_ID` as shown in [Installation](#%EF%B8%8F-installation). Then pick your agent:
+
+**Claude Code** (installs the skill and the MCP server together):
+
+```
+/plugin marketplace add behnambagheri/fish-paste-gram
+/plugin install paste-gram@paste-gram
+```
+
+The MCP server needs the `mcp` Python package: `python3 -m pip install mcp`, or set `PASTEGRAM_MCP_PYTHON` to an interpreter that has it.
+
+**Codex, Cursor, Claude Desktop, and other MCP clients:** register the MCP server as shown in [MCP server](#mcp-server). For Codex:
+
+```bash
+codex mcp add paste-gram -- python3 /path/to/fish-paste-gram/mcp-server/paste_gram_mcp.py
+```
+
+**Any agent with shell access:** no setup is needed beyond the CLI. Optionally copy or symlink `skills/paste-gram` into the agent's skills directory, for example `~/.codex/skills/paste-gram` for Codex or `~/.claude/skills/paste-gram` for Claude Code without the plugin.
+
+### Example prompts
+
+- "Run the tests and send me the failure report on Telegram."
+- "When the build finishes, message me on Telegram with the result."
+- "Compress the `logs/` folder and send it to me on Telegram."
+- "Send `dist/report.pdf` to the `team` alias on Telegram with the caption 'Weekly report'."
+
+### How agents call the CLI
+
+Agents typically run bash or zsh and have no terminal attached, so paste-gram behaves predictably in non-interactive shells:
+
+- Call it through Fish and pass content after `--`: `fish -c 'paste-gram $argv' -- ./report.pdf`.
+- Positional arguments take precedence over stdin; stdin is read only when no positional arguments are given, and empty stdin is treated as no input.
+- `-m`/`--message` without inline text fails with an error instead of waiting on an editor when no terminal is available.
+- Multiple inputs without `--file-name` use the timestamped default archive name instead of prompting.
+- A missing input or any failed Telegram request exits with a non-zero status.
+
+### MCP server
+
+[`mcp-server/paste_gram_mcp.py`](mcp-server/paste_gram_mcp.py) exposes paste-gram as [Model Context Protocol](https://modelcontextprotocol.io) tools, so any MCP client (Claude Code, Claude Desktop, Codex, Cursor, …) can call it directly:
+
+| Tool | Purpose |
+|------|---------|
+| `send_message` | Send text (plain text in a code block, or Telegram HTML with `html: true`) |
+| `send_files` | Send files or directories, with an optional caption and archive name |
+| `list_targets` | List aliases from the chat alias map |
+| `check_setup` | Report installation and configuration status without revealing secrets |
+
+Each send returns `ok`, `exit_code`, the `sent` confirmations, and any `errors`. The server wraps the Fish function, so chunking, compression, captions, and MTProto guardrails behave exactly like the CLI. It requires Python 3.10+ with the `mcp` package (`pip install -r mcp-server/requirements.txt`) and `fish` on `PATH`.
+
+The Claude Code plugin above registers the server automatically. Set `PASTEGRAM_MCP_PYTHON` if `python3` on your `PATH` does not have `mcp` installed. To register it manually in Claude Code:
+
+```bash
+claude mcp add paste-gram -s user -- /path/to/python /path/to/paste-gram/mcp-server/paste_gram_mcp.py
+```
+
+Other clients use the same command in their MCP configuration, for example:
+
+```json
+{
+  "mcpServers": {
+    "paste-gram": {
+      "command": "/path/to/python",
+      "args": ["/path/to/paste-gram/mcp-server/paste_gram_mcp.py"]
+    }
+  }
+}
+```
+
+The server adds guardrails for agent use:
+
+- Files and directories must sit under an allowed root (the server's working directory by default), and paths that look like credentials (`.ssh`, `.env`, `*.pem`, `*.key`, MTProto session files, …) are always refused, including inside directories.
+- Destinations are limited to the default chat, `me`, and aliases from the alias map. Raw chat IDs and usernames require opt-in.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PASTEGRAM_MCP_ALLOWED_ROOTS` | server working directory | `:`-separated directories that `send_files` may read from |
+| `PASTEGRAM_MCP_ALLOW_ANY_TARGET` | `false` | Allow raw chat IDs and `@usernames` in addition to aliases |
+| `PASTEGRAM_MCP_TIMEOUT` | `900` | Seconds before a send is aborted |
+| `PASTEGRAM_MCP_FUNCTION_FILE` | bundled `functions/paste-gram.fish` | Fish file to source; set it to an empty string to use the installed function |
+| `PASTEGRAM_MCP_PYTHON` | `python3` | Interpreter used by the Claude Code plugin to start the server |
+
+The MTProto guardrails still apply: agents should not set `PASTEGRAM_MT_ALLOW_EXTERNAL` or `PASTEGRAM_MT_ALLOW_BROADCAST` on their own, and the first MTProto login must be completed interactively by you.
 
 ---
 
@@ -364,6 +489,28 @@ Use the `--id`/`-i` flag to override `TELEGRAM_CHAT_ID` for a single call (prefi
 
 ---
 
+## ❓ FAQ
+
+**How do I send a file to Telegram from the command line?**
+Install paste-gram, set `TELEGRAM_TOKEN` and `TELEGRAM_CHAT_ID`, then run `ptg /path/to/file`. Directories work the same way and are archived automatically.
+
+**How do I pipe command output to Telegram?**
+Pipe it into `ptg`: `some_command 2>&1 | ptg`. The output is sent as a formatted code block and split into several messages if it is longer than Telegram's 4096-character limit.
+
+**Can I send files larger than 50 MB with a Telegram bot?**
+The Bot API limits bot uploads to 50 MB, so in Bot API mode paste-gram compresses large inputs and splits them into 49 MB parts named `archive.tgz_00`, `archive.tgz_01`, and so on. Download them into one folder and rejoin them with `cat archive.tgz_* > archive.tgz`. MTProto mode sends the file whole.
+
+**Does it work in bash or zsh?**
+paste-gram is a Fish function, but you can call it from any shell: `fish -c 'paste-gram $argv' -- ./report.pdf`. Fish only needs to be installed.
+
+**Can I send as my own Telegram account instead of a bot?**
+Yes. Use `--mtproto` (or `--personal`) with your own API ID and hash from [my.telegram.org](https://my.telegram.org). See [Personal account (MTProto)](#-personal-account-mtproto).
+
+**Does it work on macOS and Linux?**
+Yes. It supports both GNU and BSD/macOS userland tools.
+
+---
+
 ## 🧾 License
 
-MIT License © 2025 [Behnam Bagheri]
+[MIT License](LICENSE) © 2025 Behnam Bagheri

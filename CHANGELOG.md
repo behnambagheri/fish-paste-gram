@@ -2,7 +2,12 @@
 
 ## [Unreleased]
 
+## [v1.8.0] - 2026-10-14
+
 ### Added
+- MCP server (`mcp-server/paste_gram_mcp.py`) with `send_message`, `send_files`, `list_targets`, and `check_setup` tools, path and destination guardrails for agents, and automatic registration through the Claude Code plugin.
+- Agent Skill (`skills/paste-gram/SKILL.md`), Claude Code plugin marketplace manifest, and `llms.txt` so AI agents can discover and use paste-gram.
+- `--html` renders `-m`/`--message` content as Telegram HTML in standalone messages and file captions, preserving formatting across long-message chunks.
 - `-m`/`--message` now sends a standalone message when no file, positional text, or stdin input is supplied.
 - Configurable default transport with `PASTEGRAM_DEFAULT_MODE=bot|mtproto`.
 - Directory uploads are archived as `.tgz` files and chunked when the archive exceeds the Bot API upload threshold.
@@ -13,6 +18,10 @@
 - `-v`/`--verbose` diagnostics for effective configuration and Telegram responses across stdin, argument, and file sends.
 
 ### Changed
+- Relicensed from GPL-3.0 to the MIT License, matching the license stated in the README and plugin metadata.
+- Positional arguments now take precedence over stdin, so files and text are sent when stdin is not a terminal (scripts, CI, AI agents); empty stdin is treated as no input.
+- Non-interactive runs use the timestamped default archive name instead of prompting, and `-m` without text fails fast when no terminal is available for the editor.
+- Running without any input now prints an error to stderr and exits non-zero.
 - `-v` is now the verbose flag; use `-V` or `--version` for version output.
 - File captions are now compact and prettier: redundant headers are removed, directory names are not repeated, and home-directory paths use `~/…`.
 - Captions now use plain Host, Command, PATH, and FILE labels without emojis or separator lines; command and path values are displayed on their own lines.
@@ -26,6 +35,9 @@
 - Multi-input archive names can be set with `--file-name`, or chosen at an interactive prompt with a timestamped suggested default.
 
 ### Fixed
+- `--api-url=`, `--proxy=`, `--file-name=`, and `--include-path=` no longer prepend a stray `--` to their values.
+- `--message=<text>` preserves newlines in multi-line text.
+- Long Bot API argument messages send each chunk once, preserving newlines at chunk boundaries.
 - MTProto proxy handling now uses the current Telethon `python-socks` dependency instead of requiring PySocks.
 - File-size detection now supports both GNU `stat` and macOS/BSD `stat` when Homebrew changes PATH precedence.
 - MTProto now blocks external and multi-target sends by default and throttles sends with a one-second delay.
