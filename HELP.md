@@ -4,7 +4,7 @@
 `paste-gram` sends text or files from your Fish shell to a Telegram chat via the Bot API, with an optional MTProto mode for personal-account sends. It supports stdin, direct arguments, and large files (auto-compresses and chunks >50MB for bot mode).
 
 ## Install
-- `fisher install behnambagheri/paste-gram`
+- `fisher install behnambagheri/fish-paste-gram`
 - Alias: `ptg` (from `conf.d/paste-gram-alias.fish`).
 
 ## Configure

@@ -1,0 +1,31 @@
+{
+  "name": "paste-gram",
+  "version": "1.8.0",
+  "description": "Let AI agents send text, command output, files, and directories to your Telegram chat through the paste-gram Fish CLI, with an agent skill and an MCP server.",
+  "author": {
+    "name": "Behnam Bagheri"
+  },
+  "homepage": "https://github.com/behnambagheri/fish-paste-gram",
+  "repository": "https://github.com/behnambagheri/fish-paste-gram",
+  "license": "MIT",
+  "keywords": [
+    "telegram",
+    "telegram-bot",
+    "fish",
+    "fish-shell",
+    "cli",
+    "notifications",
+    "file-sharing",
+    "pastebin",
+    "mtproto",
+    "devops"
+  ],
+  "mcpServers": {
+    "paste-gram": {
+      "command": "${PASTEGRAM_MCP_PYTHON:-python3}",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/mcp-server/paste_gram_mcp.py"
+      ]
+    }
+  }
+}

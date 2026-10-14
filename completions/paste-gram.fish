@@ -24,6 +24,7 @@ end
 complete -c paste-gram -n "__paste_gram_completion_is_piped" -f
 complete -c paste-gram -s h -l help -d "Show help"
 complete -c paste-gram -s m -l message -d "Add a file caption or send a standalone message; opens the editor when omitted"
+complete -c paste-gram -l html -d "Render -m/--message as Telegram HTML"
 complete -c paste-gram -l api-url -d "Override Bot API URL for this command" -r
 complete -c paste-gram -l proxy -d "Use a curl proxy for Bot API requests" -r
 complete -c paste-gram -l file-name -d "Name the compressed archive for multiple inputs" -x

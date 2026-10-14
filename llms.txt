@@ -1,0 +1,19 @@
+# paste-gram
+
+> Fish shell CLI (`paste-gram`, alias `ptg`) that sends text, piped command output, files, and directories to a Telegram chat through the Bot API or, optionally, the user's personal account (MTProto). Large files and directories are compressed and split automatically.
+
+Agents usually run bash or zsh, so call it through Fish and pass content after `--`: `fish -c 'paste-gram $argv' -- ./report.pdf`. Positional arguments take precedence over stdin, `-m` needs inline text when no terminal is available, and a non-zero exit status means the send failed.
+
+An MCP server (`mcp-server/paste_gram_mcp.py`) exposes `send_message`, `send_files`, `list_targets`, and `check_setup` tools for MCP clients.
+
+## Docs
+
+- [Agent skill](https://github.com/behnambagheri/fish-paste-gram/blob/main/skills/paste-gram/SKILL.md): how agents should discover, call, and safely use paste-gram
+- [MCP server](https://github.com/behnambagheri/paste-gram/blob/main/mcp-server/paste_gram_mcp.py): Model Context Protocol tools wrapping the CLI
+- [README](https://github.com/behnambagheri/fish-paste-gram/blob/main/README.md): installation, configuration, usage, and environment variables
+- [Help](https://github.com/behnambagheri/fish-paste-gram/blob/main/HELP.md): short reference and troubleshooting
+- [Changelog](https://github.com/behnambagheri/fish-paste-gram/blob/main/CHANGELOG.md): release notes
+
+## Optional
+
+- [Function source](https://github.com/behnambagheri/fish-paste-gram/blob/main/functions/paste-gram.fish): full implementation

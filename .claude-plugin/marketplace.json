@@ -1,0 +1,16 @@
+{
+  "name": "paste-gram",
+  "owner": {
+    "name": "Behnam Bagheri"
+  },
+  "metadata": {
+    "description": "Telegram delivery for AI agents through the paste-gram Fish CLI."
+  },
+  "plugins": [
+    {
+      "name": "paste-gram",
+      "source": "./",
+      "description": "Send text, command output, files, and directories to Telegram from AI agents through the paste-gram Fish CLI."
+    }
+  ]
+}
