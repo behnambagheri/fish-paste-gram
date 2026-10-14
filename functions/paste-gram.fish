@@ -436,11 +436,15 @@ async def main():
             message_parse_mode = "html" if mode == "message" else None
             for chat in chat_ids:
                 entity = await resolve_entity(client, chat)
-                for msg_file in message_files:
+                for index, msg_file in enumerate(message_files, start=1):
                     with open(msg_file, "r", encoding="utf-8") as mf:
                         text = mf.read()
                     sent_message = await client.send_message(entity, text, parse_mode=message_parse_mode)
                     verbose_response("send_message", sent_message)
+                    if len(message_files) > 1:
+                        print(f"✓ sent message part {index}/{len(message_files)} to {chat}", flush=True)
+                    else:
+                        print(f"✓ sent message to {chat}", flush=True)
                     await pause_between_sends()
         elif mode == "file":
             if not file_path:
@@ -453,6 +457,7 @@ async def main():
                 entity = await resolve_entity(client, chat)
                 sent_message = await client.send_file(entity, file_path, caption=caption, parse_mode="html")
                 verbose_response("send_file", sent_message)
+                print(f"✓ sent file {os.path.basename(file_path)} to {chat}", flush=True)
                 await pause_between_sends()
         else:
             raise RuntimeError(f"Unknown MTProto mode: {mode}")
@@ -548,7 +553,7 @@ except Exception as exc:
 end
 
 function paste-gram --description "Send text, files, or directories to Telegram" --argument cmdArg
-    set -l pastegram_version "v1.8.0"
+    set -l pastegram_version "v1.8.1"
     set -l token $TELEGRAM_TOKEN
     set -l chat_id $TELEGRAM_CHAT_ID
     set -l api_url "https://api.telegram.org"

@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [v1.8.1] - 2026-10-14
+
+### Fixed
+- MTProto sends now print `✓ sent message to <target>` and `✓ sent file <name> to <target>` confirmations like the Bot API path, so the MCP server's `sent` list is no longer empty in MTProto mode.
+
 ## [v1.8.0] - 2026-10-14
 
 ### Added
