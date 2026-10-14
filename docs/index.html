@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>paste-gram: Send Files and Command Output to Telegram from the Terminal</title>
-  <meta name="description" content="paste-gram (ptg) is a Fish shell CLI that sends text, piped command output, files, and directories to Telegram via the Bot API or MTProto. Auto-compresses and splits files over 50 MB. Linux and macOS.">
-  <meta name="keywords" content="send file to telegram from terminal, pipe command output to telegram, telegram cli, telegram bot file upload, fish shell plugin, telegram notifications, ssh logs to telegram, mtproto cli">
+  <meta name="description" content="paste-gram (ptg) is a Fish shell CLI that sends text, piped command output, files, and directories to Telegram via the Bot API or MTProto. Auto-compresses and splits files over 50 MB. Agent-friendly with an MCP server and Agent Skill.">
+  <meta name="keywords" content="telegram mcp server, ai agent telegram notifications, claude code telegram, send file to telegram from terminal, pipe command output to telegram, telegram cli, telegram bot file upload, fish shell plugin, telegram notifications, ssh logs to telegram, mtproto cli">
   <link rel="canonical" href="https://behnambagheri.github.io/fish-paste-gram/">
   <meta name="theme-color" content="#26A5E4">
 
@@ -13,13 +13,13 @@
   <meta property="og:title" content="paste-gram: send files and command output to Telegram from your terminal">
   <meta property="og:description" content="Pipe logs, files, and directories from any shell to a Telegram chat. Bot API or personal account, auto-split over 50 MB.">
   <meta property="og:url" content="https://behnambagheri.github.io/fish-paste-gram/">
-  <meta property="og:image" content="https://behnambagheri.github.io/fish-paste-gram/social-preview.png">
+  <meta property="og:image" content="https://behnambagheri.github.io/fish-paste-gram/social-preview-terminal.png">
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="640">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="paste-gram: terminal to Telegram">
   <meta name="twitter:description" content="Pipe logs, files, and directories from any shell to a Telegram chat.">
-  <meta name="twitter:image" content="https://behnambagheri.github.io/fish-paste-gram/social-preview.png">
+  <meta name="twitter:image" content="https://behnambagheri.github.io/fish-paste-gram/social-preview-terminal.png">
 
   <script type="application/ld+json">
   {
@@ -48,6 +48,8 @@
        "acceptedAnswer": {"@type": "Answer", "text": "Pipe it into ptg, for example: some_command 2>&1 | ptg. Long output is split across several messages."}},
       {"@type": "Question", "name": "Can a Telegram bot send files larger than 50 MB?",
        "acceptedAnswer": {"@type": "Answer", "text": "The Bot API limits uploads to 50 MB, so paste-gram compresses large inputs and splits them into 49 MB parts that you rejoin with cat. MTProto mode sends the file whole."}},
+      {"@type": "Question", "name": "Can AI agents like Claude Code or Codex use paste-gram?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Yes. paste-gram ships an MCP server and an Agent Skill. In Claude Code, run /plugin marketplace add behnambagheri/fish-paste-gram and /plugin install paste-gram@paste-gram, then ask the agent to send files or messages to you on Telegram."}},
       {"@type": "Question", "name": "Does paste-gram work in bash or zsh?",
        "acceptedAnswer": {"@type": "Answer", "text": "Yes. It is a Fish function, but any shell can call it: fish -c 'paste-gram $argv' -- ./report.pdf"}}
     ]
@@ -96,6 +98,7 @@
   <div class="btns">
     <a class="btn primary" href="https://github.com/behnambagheri/fish-paste-gram">View on GitHub</a>
     <a class="btn" href="https://github.com/behnambagheri/fish-paste-gram#%EF%B8%8F-installation">Installation guide</a>
+    <a class="btn" href="#ai-agents">Use with AI agents</a>
     <a class="btn" href="https://github.com/behnambagheri/fish-paste-gram/releases">Releases</a>
   </div>
 
@@ -121,8 +124,34 @@ ptg ~/Documents/project
     <div class="card"><h3>Shell notifications</h3><p>Alert yourself when a build, deploy, backup, or cron job is done.</p></div>
     <div class="card"><h3>Large files and folders</h3><p>Directories become <code>.tgz</code> archives; anything over the 50&nbsp;MB bot limit is split into 49&nbsp;MB parts.</p></div>
     <div class="card"><h3>Personal account mode</h3><p>Send as yourself with MTProto, to Saved Messages by default, with guardrails against spam.</p></div>
-    <div class="card"><h3>AI agent delivery</h3><p>An Agent Skill lets Claude Code, Codex, and other agents send you reports on Telegram.</p></div>
+    <div class="card"><h3>AI agent delivery</h3><p>An MCP server and Agent Skill let Claude Code, Codex, Cursor, and other agents send you reports on Telegram.</p></div>
   </div>
+
+  <h2 id="ai-agents">Built for AI agents</h2>
+  <p>paste-gram is agent-friendly. Ask Claude Code, Codex, Cursor, or Claude Desktop to "send me the report on Telegram" and the file lands in your chat. It ships three pieces for agents:</p>
+  <div class="grid">
+    <div class="card"><h3>MCP server</h3><p>Tools for any MCP client: <code>send_message</code>, <code>send_files</code>, <code>list_targets</code>, and <code>check_setup</code>.</p></div>
+    <div class="card"><h3>Agent Skill</h3><p>Teaches skill-aware agents when and how to call paste-gram, and what not to send.</p></div>
+    <div class="card"><h3>Predictable CLI</h3><p>No prompts in non-interactive shells, clear errors, and non-zero exit codes on failure.</p></div>
+  </div>
+
+  <h3>Set it up</h3>
+  <p>Install paste-gram and set <code>TELEGRAM_TOKEN</code> and <code>TELEGRAM_CHAT_ID</code> first. Then, in <strong>Claude Code</strong>, install the plugin (skill and MCP server together):</p>
+<pre><code>/plugin marketplace add behnambagheri/fish-paste-gram
+/plugin install paste-gram@paste-gram</code></pre>
+  <p>For <strong>Codex</strong> and other MCP clients, register the server (it needs the <code>mcp</code> Python package):</p>
+<pre><code>python3 -m pip install mcp
+codex mcp add paste-gram -- python3 /path/to/fish-paste-gram/mcp-server/paste_gram_mcp.py</code></pre>
+  <p>Any agent with shell access can also call the CLI directly:</p>
+<pre><code>fish -c 'paste-gram $argv' -- ./report.pdf</code></pre>
+
+  <h3>Then just ask</h3>
+  <ul>
+    <li>"Run the tests and send me the failure report on Telegram."</li>
+    <li>"When the build finishes, message me on Telegram with the result."</li>
+    <li>"Compress the <code>logs/</code> folder and send it to me on Telegram."</li>
+  </ul>
+  <p>Agent guardrails are on by default: file sends are limited to allowed folders, credential-like files such as <code>.env</code>, <code>.ssh</code>, and <code>*.pem</code> are refused, and destinations are limited to your own chat and configured aliases. See the <a href="https://github.com/behnambagheri/fish-paste-gram#-use-with-ai-agents">README</a> for every option.</p>
 
   <h2>Features</h2>
   <ul>
@@ -131,7 +160,8 @@ ptg ~/Documents/project
     <li>Send to several chats at once with <code>--id</code> and a JSON alias map</li>
     <li>Optional hostname, command line, and path in captions</li>
     <li>Custom Bot API URL, HTTP/SOCKS proxy, and MTProxy support</li>
-    <li>Fish completions, verbose diagnostics with redacted secrets, and predictable non-interactive behavior</li>
+    <li>Fish completions and verbose diagnostics with redacted secrets</li>
+    <li>MCP server and Agent Skill for Claude Code, Codex, Cursor, and other AI agents</li>
   </ul>
 
   <h2>FAQ</h2>
@@ -141,8 +171,10 @@ ptg ~/Documents/project
   <p>The Bot API caps uploads at 50&nbsp;MB, so paste-gram compresses and splits large inputs into 49&nbsp;MB parts. Rejoin them with <code>cat archive.tgz_* &gt; archive.tgz</code>. MTProto mode sends the file whole.</p>
   <h3>Does it work in bash or zsh?</h3>
   <p>Yes, as long as Fish is installed: <code>fish -c 'paste-gram $argv' -- ./report.pdf</code>.</p>
+  <h3>Can AI agents like Claude Code or Codex use it?</h3>
+  <p>Yes. It ships an MCP server and an Agent Skill. See <a href="#ai-agents">Built for AI agents</a>.</p>
   <h3>Is it free?</h3>
-  <p>Yes. paste-gram is open source. See the <a href="https://github.com/behnambagheri/fish-paste-gram/blob/main/LICENSE">license</a>.</p>
+  <p>Yes. paste-gram is open source under the MIT License. See the <a href="https://github.com/behnambagheri/fish-paste-gram/blob/main/LICENSE">license</a>.</p>
 
   <footer>
     paste-gram by <a href="https://github.com/behnambagheri">Behnam Bagheri</a> ·
