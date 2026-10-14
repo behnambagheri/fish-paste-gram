@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>paste-gram: Send Files and Command Output to Telegram from the Terminal</title>
+  <meta name="description" content="paste-gram (ptg) is a Fish shell CLI that sends text, piped command output, files, and directories to Telegram via the Bot API or MTProto. Auto-compresses and splits files over 50 MB. Linux and macOS.">
+  <meta name="keywords" content="send file to telegram from terminal, pipe command output to telegram, telegram cli, telegram bot file upload, fish shell plugin, telegram notifications, ssh logs to telegram, mtproto cli">
+  <link rel="canonical" href="https://behnambagheri.github.io/fish-paste-gram/">
+  <meta name="theme-color" content="#26A5E4">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="paste-gram: send files and command output to Telegram from your terminal">
+  <meta property="og:description" content="Pipe logs, files, and directories from any shell to a Telegram chat. Bot API or personal account, auto-split over 50 MB.">
+  <meta property="og:url" content="https://behnambagheri.github.io/fish-paste-gram/">
+  <meta property="og:image" content="https://behnambagheri.github.io/fish-paste-gram/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="paste-gram: terminal to Telegram">
+  <meta name="twitter:description" content="Pipe logs, files, and directories from any shell to a Telegram chat.">
+  <meta name="twitter:image" content="https://behnambagheri.github.io/fish-paste-gram/social-preview.png">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "paste-gram",
+    "alternateName": "ptg",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Linux, macOS",
+    "description": "Fish shell CLI that sends text, piped command output, files, and directories to Telegram through the Bot API or MTProto, with automatic compression and splitting for files over 50 MB.",
+    "url": "https://behnambagheri.github.io/fish-paste-gram/",
+    "downloadUrl": "https://github.com/behnambagheri/fish-paste-gram",
+    "license": "https://github.com/behnambagheri/fish-paste-gram/blob/main/LICENSE",
+    "author": {"@type": "Person", "name": "Behnam Bagheri", "url": "https://github.com/behnambagheri"},
+    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {"@type": "Question", "name": "How do I send a file to Telegram from the command line?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Install paste-gram with fisher, set TELEGRAM_TOKEN and TELEGRAM_CHAT_ID, then run: ptg /path/to/file. Directories are archived automatically."}},
+      {"@type": "Question", "name": "How do I pipe command output to Telegram?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Pipe it into ptg, for example: some_command 2>&1 | ptg. Long output is split across several messages."}},
+      {"@type": "Question", "name": "Can a Telegram bot send files larger than 50 MB?",
+       "acceptedAnswer": {"@type": "Answer", "text": "The Bot API limits uploads to 50 MB, so paste-gram compresses large inputs and splits them into 49 MB parts that you rejoin with cat. MTProto mode sends the file whole."}},
+      {"@type": "Question", "name": "Does paste-gram work in bash or zsh?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Yes. It is a Fish function, but any shell can call it: fish -c 'paste-gram $argv' -- ./report.pdf"}}
+    ]
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #f7f9fb; --fg: #17202a; --muted: #5b6b7a; --card: #ffffff;
+      --border: #dfe6ec; --accent: #1d8fd0; --code-bg: #0f1720; --code-fg: #d8e2ea;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0d1218; --fg: #e6edf3; --muted: #9aa8b5; --card: #141b23;
+        --border: #24303c; --accent: #4cb8f0; --code-bg: #070b10; --code-fg: #d8e2ea; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg);
+      font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 860px; margin: 0 auto; padding: 48px 16px 64px; }
+    h1 { font-size: clamp(1.9rem, 5vw, 2.7rem); line-height: 1.15; margin: 0 0 12px; }
+    h2 { font-size: 1.4rem; margin: 48px 0 12px; }
+    h3 { font-size: 1.05rem; margin: 20px 0 4px; }
+    p, li { color: var(--fg); }
+    .lead { color: var(--muted); font-size: 1.15rem; margin: 0 0 24px; }
+    a { color: var(--accent); }
+    .btns { display: flex; gap: 12px; flex-wrap: wrap; margin: 24px 0 32px; }
+    .btn { display: inline-block; padding: 10px 18px; border-radius: 8px; text-decoration: none;
+      font-weight: 600; border: 1px solid var(--border); background: var(--card); color: var(--fg); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    pre { background: var(--code-bg); color: var(--code-fg); padding: 16px 18px; border-radius: 10px;
+      overflow-x: auto; font-size: 0.9rem; line-height: 1.55; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .c { color: #7f93a6; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+    .card h3 { margin-top: 0; }
+    .card p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+    footer { color: var(--muted); font-size: 0.9rem; margin-top: 56px; border-top: 1px solid var(--border); padding-top: 16px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>paste-gram: send files and command output to Telegram from your terminal</h1>
+  <p class="lead">A small Fish shell CLI (<code>ptg</code>) that sends text, piped output, files, and whole directories to a Telegram chat through the Bot API, or as your own account through MTProto. Files over 50&nbsp;MB are compressed and split automatically. Works on Linux and macOS, over SSH, in cron and CI, and from AI coding agents.</p>
+
+  <div class="btns">
+    <a class="btn primary" href="https://github.com/behnambagheri/fish-paste-gram">View on GitHub</a>
+    <a class="btn" href="https://github.com/behnambagheri/fish-paste-gram#%EF%B8%8F-installation">Installation guide</a>
+    <a class="btn" href="https://github.com/behnambagheri/fish-paste-gram/releases">Releases</a>
+  </div>
+
+<pre><code><span class="c"># install with fisher</span>
+fisher install behnambagheri/fish-paste-gram
+set -Ux TELEGRAM_TOKEN 'your_bot_token'
+set -Ux TELEGRAM_CHAT_ID '123456789'
+
+<span class="c"># pipe any command output to Telegram</span>
+journalctl -u nginx --since today | ptg
+
+<span class="c"># send a file or a whole directory (auto .tgz, split over 50 MB)</span>
+ptg ~/logs/app.log
+ptg ~/Documents/project
+
+<span class="c"># get notified when a long job finishes</span>
+./backup.sh; ptg -m "backup finished"</code></pre>
+
+  <h2>What you can do with it</h2>
+  <div class="grid">
+    <div class="card"><h3>Server logs to Telegram</h3><p>Grab log files or <code>journalctl</code> output from a remote machine over SSH without <code>scp</code>.</p></div>
+    <div class="card"><h3>Pipe any output</h3><p><code>kubectl get pods | ptg</code>, <code>docker logs app | ptg</code>, <code>df -h | ptg</code>. Long output is chunked.</p></div>
+    <div class="card"><h3>Shell notifications</h3><p>Alert yourself when a build, deploy, backup, or cron job is done.</p></div>
+    <div class="card"><h3>Large files and folders</h3><p>Directories become <code>.tgz</code> archives; anything over the 50&nbsp;MB bot limit is split into 49&nbsp;MB parts.</p></div>
+    <div class="card"><h3>Personal account mode</h3><p>Send as yourself with MTProto, to Saved Messages by default, with guardrails against spam.</p></div>
+    <div class="card"><h3>AI agent delivery</h3><p>An Agent Skill lets Claude Code, Codex, and other agents send you reports on Telegram.</p></div>
+  </div>
+
+  <h2>Features</h2>
+  <ul>
+    <li>Text, stdin, files, directories, and multiple inputs bundled into one named archive</li>
+    <li>Captions with <code>-m</code>, editor support for long captions, and Telegram HTML with <code>--html</code></li>
+    <li>Send to several chats at once with <code>--id</code> and a JSON alias map</li>
+    <li>Optional hostname, command line, and path in captions</li>
+    <li>Custom Bot API URL, HTTP/SOCKS proxy, and MTProxy support</li>
+    <li>Fish completions, verbose diagnostics with redacted secrets, and predictable non-interactive behavior</li>
+  </ul>
+
+  <h2>FAQ</h2>
+  <h3>How do I send a file to Telegram from the command line?</h3>
+  <p>Install paste-gram, set <code>TELEGRAM_TOKEN</code> and <code>TELEGRAM_CHAT_ID</code>, then run <code>ptg /path/to/file</code>. Directories work the same way.</p>
+  <h3>Can a Telegram bot send files larger than 50&nbsp;MB?</h3>
+  <p>The Bot API caps uploads at 50&nbsp;MB, so paste-gram compresses and splits large inputs into 49&nbsp;MB parts. Rejoin them with <code>cat archive.tgz_* &gt; archive.tgz</code>. MTProto mode sends the file whole.</p>
+  <h3>Does it work in bash or zsh?</h3>
+  <p>Yes, as long as Fish is installed: <code>fish -c 'paste-gram $argv' -- ./report.pdf</code>.</p>
+  <h3>Is it free?</h3>
+  <p>Yes. paste-gram is open source. See the <a href="https://github.com/behnambagheri/fish-paste-gram/blob/main/LICENSE">license</a>.</p>
+
+  <footer>
+    paste-gram by <a href="https://github.com/behnambagheri">Behnam Bagheri</a> ·
+    <a href="https://github.com/behnambagheri/fish-paste-gram">Source</a> ·
+    <a href="https://github.com/behnambagheri/fish-paste-gram/blob/main/CHANGELOG.md">Changelog</a> ·
+    <a href="https://github.com/behnambagheri/fish-paste-gram/issues">Issues</a>
+  </footer>
+</main>
+</body>
+</html>
