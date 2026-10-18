@@ -1,0 +1,633 @@
+/*
+ * Behnam Bagheri Design System - components (v1)
+ * Load after tokens.css and base.css. Every component uses logical properties,
+ * so it works in RTL (dir="rtl") without overrides.
+ * Demo and markup reference: https://bea.sh/ds/
+ */
+
+/* Layout container */
+.bb-container,
+.bb-header,
+.bb-footer {
+  width: min(var(--bb-container), calc(100% - 40px));
+  margin-inline: auto;
+}
+
+/* Eyebrow: small uppercase label above headings */
+.bb-eyebrow {
+  margin: 0 0 10px;
+  color: var(--bb-text-accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: var(--bb-tracking-caps);
+  text-transform: uppercase;
+}
+
+/* Header: sticky glass bar on desktop, stacked on small screens */
+.bb-header {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--bb-line);
+  border-radius: var(--bb-radius-md);
+  background: color-mix(in srgb, var(--bb-surface) 86%, transparent);
+  box-shadow: var(--bb-shadow-header);
+  backdrop-filter: blur(18px);
+}
+
+.bb-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.bb-brand-mark {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--bb-radius-md);
+  box-shadow: 0 0 0 1px var(--bb-line);
+}
+
+/* Nav */
+.bb-nav {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.bb-nav-link,
+.bb-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--bb-radius-md);
+  background: transparent;
+  color: var(--bb-muted);
+  font: inherit;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--bb-duration) var(--bb-ease), border-color var(--bb-duration) var(--bb-ease), background var(--bb-duration) var(--bb-ease);
+}
+
+.bb-nav-link:hover,
+.bb-theme-toggle:hover {
+  border-color: var(--bb-line);
+  background: var(--bb-surface-strong);
+  color: var(--bb-text);
+}
+
+/* Theme toggle: icon-only, shows the theme on screen (sun = light, moon = dark).
+   Script sets data-current="light|dark" on the button. */
+.bb-theme-toggle {
+  justify-content: center;
+  width: 38px;
+  padding: 0;
+}
+
+.bb-theme-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.bb-theme-toggle .bb-icon-moon,
+.bb-theme-toggle[data-current='dark'] .bb-icon-sun {
+  display: none;
+}
+
+.bb-theme-toggle[data-current='dark'] .bb-icon-moon {
+  display: block;
+}
+
+.bb-nav-link[aria-current]:not([aria-current='false']) {
+  border-color: transparent;
+  background: var(--bb-accent-subtle);
+  color: var(--bb-text-accent);
+}
+
+/* Button */
+.bb-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 11px 16px;
+  border: 1px solid var(--bb-line);
+  border-radius: var(--bb-radius-md);
+  background: var(--bb-surface);
+  color: var(--bb-text);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform var(--bb-duration) var(--bb-ease), border-color var(--bb-duration) var(--bb-ease), background var(--bb-duration) var(--bb-ease), color var(--bb-duration) var(--bb-ease);
+}
+
+.bb-button:hover {
+  transform: translateY(-1px);
+  border-color: var(--bb-accent);
+}
+
+.bb-button--secondary {
+  background: var(--bb-surface);
+}
+
+.bb-button--primary {
+  border-color: var(--bb-accent);
+  background: var(--bb-accent);
+  color: var(--bb-on-accent);
+}
+
+.bb-button--primary:hover {
+  border-color: var(--bb-accent-hover);
+  background: var(--bb-accent-hover);
+}
+
+.bb-button--ghost {
+  border-color: transparent;
+  background: transparent;
+}
+
+.bb-button--ghost:hover {
+  border-color: var(--bb-line);
+  background: var(--bb-surface-strong);
+}
+
+.bb-button--sm {
+  min-height: 40px;
+  padding: 8px 12px;
+}
+
+.bb-button--lg {
+  min-height: 48px;
+}
+
+.bb-button svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  flex: 0 0 auto;
+}
+
+/* Status badge */
+.bb-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 1px solid var(--bb-line);
+  border-radius: var(--bb-radius-full);
+  color: var(--bb-muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.bb-badge--public {
+  border-color: color-mix(in srgb, var(--bb-success) 34%, var(--bb-line));
+  background: var(--bb-success-subtle);
+  color: var(--bb-success);
+}
+
+.bb-badge--request {
+  border-color: color-mix(in srgb, var(--bb-warning) 34%, var(--bb-line));
+  background: var(--bb-warning-subtle);
+  color: var(--bb-warning);
+}
+
+.bb-badge--accent {
+  border-color: var(--bb-border-accent);
+  background: var(--bb-accent-subtle);
+  color: var(--bb-text-accent);
+}
+
+.bb-badge--neutral {
+  background: var(--bb-surface-strong);
+}
+
+/* Shared card surface */
+.bb-signal-card,
+.bb-metric-grid,
+.bb-card,
+.bb-capability-card,
+.bb-service-card {
+  border: 1px solid var(--bb-line);
+  border-radius: var(--bb-radius-md);
+  background: color-mix(in srgb, var(--bb-surface) 92%, transparent);
+  box-shadow: var(--bb-shadow);
+}
+
+/* Profile item: icon + contact detail */
+.bb-profile-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--bb-line);
+  border-radius: var(--bb-radius-md);
+  background: color-mix(in srgb, var(--bb-surface) 88%, transparent);
+  color: var(--bb-muted);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.bb-profile-item svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  flex: 0 0 auto;
+}
+
+.bb-profile-item span {
+  overflow-wrap: anywhere;
+}
+
+a.bb-profile-item:hover {
+  border-color: var(--bb-border-accent);
+  color: var(--bb-text-accent);
+}
+
+/* Signal card: live status line */
+.bb-signal-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.bb-signal-card p {
+  margin: 0;
+  color: var(--bb-muted);
+  font-weight: 600;
+}
+
+.bb-signal-dot {
+  flex: 0 0 auto;
+  width: 11px;
+  height: 11px;
+  border-radius: var(--bb-radius-full);
+  background: var(--bb-success);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--bb-success) 16%, transparent);
+}
+
+/* Metric grid: 2x2, one column on phones */
+.bb-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+}
+
+.bb-metric-grid > * {
+  min-height: 114px;
+  padding: 16px;
+  border-inline-end: 1px solid var(--bb-line);
+  border-bottom: 1px solid var(--bb-line);
+}
+
+.bb-metric-grid > :nth-child(2n) {
+  border-inline-end: 0;
+}
+
+.bb-metric-grid > :nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.bb-metric-grid strong {
+  display: block;
+  font-size: clamp(2rem, 3.8vw, 3.25rem);
+  line-height: 1;
+}
+
+.bb-metric-grid span {
+  display: block;
+  margin-top: 10px;
+  color: var(--bb-muted);
+  font-size: 0.94rem;
+  font-weight: 650;
+}
+
+/* Capability card */
+.bb-capability-card {
+  padding: 18px;
+}
+
+.bb-capability-card h3,
+.bb-service-card h3 {
+  margin: 0;
+  line-height: 1.15;
+}
+
+.bb-capability-index {
+  display: block;
+  margin-bottom: 28px;
+  color: var(--bb-text-accent);
+  font-weight: 800;
+}
+
+.bb-capability-card p,
+.bb-service-card p {
+  margin: 10px 0 0;
+  color: var(--bb-muted);
+}
+
+/* Service card */
+.bb-service-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 236px;
+  padding: 18px;
+  box-shadow: none;
+  transition: transform var(--bb-duration) var(--bb-ease), border-color var(--bb-duration) var(--bb-ease), box-shadow var(--bb-duration) var(--bb-ease);
+}
+
+.bb-service-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--bb-border-accent);
+  box-shadow: var(--bb-shadow-hover);
+}
+
+.bb-service-card--featured {
+  grid-column: span 2;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--bb-accent) 13%, transparent), transparent 45%),
+    color-mix(in srgb, var(--bb-surface) 94%, transparent);
+}
+
+.bb-service-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.bb-service-links {
+  display: grid;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.bb-service-links a,
+.bb-service-links span {
+  color: var(--bb-text);
+  font-size: 0.94rem;
+  font-weight: 750;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.bb-service-links a:hover {
+  color: var(--bb-text-accent);
+}
+
+.bb-service-card .bb-button {
+  align-self: flex-start;
+}
+
+/* Post card: blog list item */
+.bb-post-card {
+  padding: 20px 22px;
+  border: 1px solid var(--bb-line);
+  border-radius: var(--bb-radius-md);
+  background: var(--bb-surface);
+}
+
+.bb-post-card h2 {
+  margin: 0 0 6px;
+  font-size: 1.25rem;
+  line-height: 1.35;
+}
+
+.bb-post-card a {
+  text-decoration: none;
+}
+
+.bb-post-card a:hover {
+  color: var(--bb-text-accent);
+}
+
+.bb-post-card p,
+.bb-post-meta {
+  margin: 0;
+  color: var(--bb-muted);
+}
+
+.bb-post-meta {
+  font-size: 0.88rem;
+}
+
+/* Code block: always dark and LTR, also on RTL pages */
+.bb-code-block {
+  position: relative;
+  min-width: 0;
+}
+
+.bb-code {
+  min-width: 0;
+  max-width: 100%;
+  margin: 10px 0 0;
+  padding: 14px;
+  overflow-x: auto;
+  border: 1px solid var(--bb-line);
+  border-radius: var(--bb-radius-md);
+  background: var(--bb-code-bg);
+  direction: ltr;
+  text-align: left;
+}
+
+.bb-code code {
+  color: var(--bb-code-text);
+  font-family: var(--bb-font-mono);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.bb-code-block .bb-code {
+  padding-top: 42px;
+}
+
+.bb-code-copy {
+  position: absolute;
+  top: 8px;
+  inset-inline-end: 8px;
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid var(--bb-line);
+  border-radius: var(--bb-radius-md);
+  background: var(--bb-code-raised);
+  color: #f8fafc;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color var(--bb-duration) var(--bb-ease);
+}
+
+.bb-code-copy:hover {
+  border-color: var(--bb-accent);
+}
+
+/* Tooltip: put .bb-tooltip inside a .bb-tooltip-host; shows on hover or keyboard focus */
+.bb-tooltip-host {
+  position: relative;
+  display: block;
+}
+
+.bb-tooltip {
+  position: absolute;
+  top: calc(100% + 14px);
+  inset-inline-start: -10px;
+  z-index: 30;
+  display: grid;
+  gap: 6px;
+  width: min(320px, calc(100vw - 40px));
+  padding: 14px 16px;
+  border: 1px solid var(--bb-line);
+  border-radius: var(--bb-radius-md);
+  background: var(--bb-surface);
+  box-shadow: var(--bb-shadow);
+  color: var(--bb-muted);
+  font-size: 0.86rem;
+  font-weight: 400;
+  line-height: 1.5;
+  text-align: start;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 160ms ease, transform 160ms ease, visibility 160ms;
+  pointer-events: none;
+}
+
+.bb-tooltip b,
+.bb-tooltip-title {
+  color: var(--bb-text);
+}
+
+.bb-tooltip-title {
+  font-size: 0.95rem;
+}
+
+.bb-tooltip-note {
+  padding-top: 6px;
+  border-top: 1px solid var(--bb-line);
+}
+
+.bb-tooltip-host:hover .bb-tooltip,
+.bb-tooltip-host:focus-visible .bb-tooltip,
+:focus-visible > .bb-tooltip-host .bb-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* Footer */
+.bb-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 28px 0 42px;
+  border-top: 1px solid var(--bb-line);
+  color: var(--bb-muted);
+}
+
+.bb-footer p {
+  margin: 0;
+}
+
+.bb-footer a {
+  color: var(--bb-text);
+  font-weight: 750;
+  text-decoration: none;
+}
+
+/* Tablets: header and footer stack */
+@media (max-width: 760px) {
+  .bb-container,
+  .bb-header,
+  .bb-footer {
+    width: min(100% - 28px, var(--bb-container));
+  }
+
+  .bb-header {
+    position: relative;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  /* Keep the icon toggle on the brand row instead of wrapping under the links */
+  .bb-header .bb-theme-toggle {
+    position: absolute;
+    top: 10px;
+    inset-inline-end: 10px;
+  }
+
+  .bb-header:has(.bb-theme-toggle) .bb-brand {
+    padding-inline-end: 44px;
+  }
+
+  .bb-nav {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .bb-nav-link {
+    flex: 1 1 auto;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .bb-service-card--featured {
+    grid-column: auto;
+  }
+
+  .bb-service-header,
+  .bb-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Phones: one-column metrics, full-width buttons */
+@media (max-width: 480px) {
+  .bb-metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bb-metric-grid > *,
+  .bb-metric-grid > :nth-child(2n),
+  .bb-metric-grid > :nth-last-child(-n + 2) {
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--bb-line);
+  }
+
+  .bb-metric-grid > :last-child {
+    border-bottom: 0;
+  }
+
+  .bb-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .bb-button--sm,
+  .bb-service-card .bb-button {
+    width: auto;
+  }
+}

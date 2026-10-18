@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-product="blue">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -59,561 +59,345 @@
   }
   </script>
 
-
-  <!-- Resolve the saved theme (system, light, dark) before first paint to avoid a flash. -->
+  <!-- Apply a saved theme choice (bb-theme, shared with bea.sh) before first paint; otherwise follow the OS. -->
   <script>
     (function () {
-      var pref = 'system';
-      try { pref = localStorage.getItem('ptg-theme') || 'system'; } catch (e) {}
-      var dark = pref === 'dark' || (pref === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-      document.documentElement.setAttribute('data-theme', dark ? 'bea-dark' : 'bea-light');
-      document.documentElement.classList.add('js');
+      var root = document.documentElement;
+      root.classList.add('js');
+      try {
+        var theme = localStorage.getItem('bb-theme');
+        if (theme === 'light' || theme === 'dark') root.setAttribute('data-theme', theme);
+      } catch (e) {}
     })();
   </script>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.47/daisyui.css" rel="stylesheet" type="text/css">
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3"></script>
-
-  <style type="text/tailwindcss">
-    @theme {
-      --font-sans: 'Space Grotesk', Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
-    }
-  </style>
-
-  <style>
-    /* daisyUI themes built from the bea.sh palette. "bea-light" is also the no-JS fallback. */
-    :root, [data-theme='bea-light'] {
-      color-scheme: light;
-      --color-base-100: #ffffff;
-      --color-base-200: #f8fafc;
-      --color-base-300: #eef2ff;
-      --color-base-content: #101114;
-      --color-primary: #2563eb;
-      --color-primary-content: #ffffff;
-      --color-secondary: #b45309;
-      --color-secondary-content: #ffffff;
-      --color-accent: #1d4ed8;
-      --color-accent-content: #ffffff;
-      --color-neutral: #0f172a;
-      --color-neutral-content: #e5e7eb;
-      --color-info: #0284c7;
-      --color-info-content: #ffffff;
-      --color-success: #047857;
-      --color-success-content: #ffffff;
-      --color-warning: #b45309;
-      --color-warning-content: #ffffff;
-      --color-error: #dc2626;
-      --color-error-content: #ffffff;
-      --radius-selector: 0.5rem;
-      --radius-field: 0.45rem;
-      --radius-box: 0.5rem;
-      --size-selector: 0.25rem;
-      --size-field: 0.25rem;
-      --border: 1px;
-      --depth: 0;
-      --noise: 0;
-      --line: rgba(16, 17, 20, 0.11);
-      --muted: #5f6572;
-      --glow-shadow: 0 24px 70px rgba(15, 23, 42, 0.1);
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root:not([data-theme]) { color-scheme: dark; }
-    }
-
-    [data-theme='bea-dark'] {
-      color-scheme: dark;
-      --color-base-100: #141821;
-      --color-base-200: #0c0f14;
-      --color-base-300: #1b2330;
-      --color-base-content: #f4f7fb;
-      --color-primary: #60a5fa;
-      --color-primary-content: #0c0f14;
-      --color-secondary: #fbbf24;
-      --color-secondary-content: #0c0f14;
-      --color-accent: #93c5fd;
-      --color-accent-content: #0c0f14;
-      --color-neutral: #0a0e16;
-      --color-neutral-content: #e5e7eb;
-      --color-info: #38bdf8;
-      --color-info-content: #0c0f14;
-      --color-success: #34d399;
-      --color-success-content: #0c0f14;
-      --color-warning: #fbbf24;
-      --color-warning-content: #0c0f14;
-      --color-error: #f87171;
-      --color-error-content: #0c0f14;
-      --line: rgba(244, 247, 251, 0.13);
-      --muted: #a8b0bd;
-      --glow-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
-    }
-
-    html { scroll-behavior: smooth; }
-    section { scroll-margin-top: 100px; }
-
-    /* bea.sh backdrop: faint 72px grid plus soft accent glows. */
-    body {
-      min-height: 100vh;
-      background:
-        linear-gradient(90deg, color-mix(in srgb, var(--line) 34%, transparent) 1px, transparent 1px),
-        linear-gradient(0deg, color-mix(in srgb, var(--line) 34%, transparent) 1px, transparent 1px),
-        var(--color-base-200);
-      background-size: 72px 72px;
-      color: var(--color-base-content);
-    }
-
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: -1;
-      background:
-        linear-gradient(180deg, color-mix(in srgb, var(--color-base-200) 6%, transparent), var(--color-base-200) 92%),
-        radial-gradient(circle at 14% 12%, color-mix(in srgb, var(--color-primary) 18%, transparent), transparent 32%),
-        radial-gradient(circle at 88% 6%, color-mix(in srgb, var(--color-warning) 12%, transparent), transparent 28%);
-    }
-
-    .muted { color: var(--muted); }
-    .hairline { border: 1px solid var(--line); }
-    .glow { box-shadow: var(--glow-shadow); }
-    .surface { background: color-mix(in srgb, var(--color-base-100) 92%, transparent); }
-
-    .icon {
-      width: 18px;
-      height: 18px;
-      fill: none;
-      stroke: currentColor;
-      stroke-width: 2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      flex: 0 0 auto;
-    }
-
-    :not(pre) > code:not(.raw) {
-      padding: 1px 5px;
-      border-radius: 4px;
-      background: var(--color-base-300);
-      font-size: 0.9em;
-      overflow-wrap: anywhere;
-    }
-
-    .eyebrow {
-      color: var(--color-primary);
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-    }
-
-    .lift { transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
-    .lift:hover {
-      transform: translateY(-3px);
-      border-color: color-mix(in srgb, var(--color-primary) 45%, var(--line));
-      box-shadow: 0 20px 48px rgba(15, 23, 42, 0.12);
-    }
-
-    .mockup-code { font-size: 0.82rem; }
-    .mockup-code pre[data-prefix]::before { opacity: 0.55; }
-    .mockup-code .c { color: #8b98ad; }
-    .mockup-code .ok { color: #6ee7b7; }
-    .mockup-code .a { color: #7dd3fc; }
-
-    .copy-btn { position: absolute; top: 0.55rem; right: 0.6rem; }
-    .card-body, .tab-content { min-width: 0; }
-
-    .metric-grid .stat { border-bottom: 1px solid var(--line); border-inline-start: 0; }
-    .metric-grid .stat:last-child { border-bottom: 0; }
-    @media (min-width: 640px) {
-      .metric-grid .stat:nth-child(odd) { border-inline-end: 1px solid var(--line); }
-      .metric-grid .stat:nth-last-child(-n + 2) { border-bottom: 0; }
-    }
-
-    .dash-list li { position: relative; padding-left: 28px; break-inside: avoid; }
-    .dash-list li::before {
-      content: '';
-      position: absolute;
-      top: 0.75em;
-      left: 0;
-      width: 14px;
-      height: 2px;
-      background: var(--color-primary);
-    }
-
-    html.js .reveal { transform: translateY(18px); opacity: 0; transition: opacity 600ms ease, transform 600ms ease; }
-    html.js .reveal.is-visible { transform: none; opacity: 1; }
-
-    @media (prefers-reduced-motion: reduce) {
-      html { scroll-behavior: auto; }
-      html.js .reveal { transform: none; opacity: 1; transition: none; }
-      .lift, .lift:hover { transition: none; transform: none; }
-    }
-  </style>
+  <!-- Behnam Bagheri Design System, vendored from bea.sh (see ds/VERSION), then page-specific styles. -->
+  <link rel="stylesheet" href="ds/v1/tokens.css?v=20261018">
+  <link rel="stylesheet" href="ds/v1/base.css?v=20261018">
+  <link rel="stylesheet" href="ds/v1/components.css?v=20261018">
+  <link rel="stylesheet" href="site.css?v=20261018">
 </head>
-<body class="font-sans antialiased">
-  <svg width="0" height="0" class="absolute" aria-hidden="true">
+<body>
+  <svg width="0" height="0" class="sprite" aria-hidden="true">
     <defs>
       <symbol id="i-prompt" viewBox="0 0 24 24"><path d="M5 7l5 5-5 5"/><path d="M13 17h6"/></symbol>
       <symbol id="i-github" viewBox="0 0 24 24"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></symbol>
       <symbol id="i-bot" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><path d="M9 13v2M15 13v2"/></symbol>
-      <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
-      <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
       <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
-      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
-      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
       <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 6.5h.01M7 17.5h.01"/></symbol>
       <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0V8zM12 18v4"/></symbol>
       <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14z"/><path d="M6.5 17A2.5 2.5 0 0 0 4 19.5 2.5 2.5 0 0 0 6.5 22H20v-5"/></symbol>
       <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
-      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+      <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><path d="M7.5 7.5h.01"/></symbol>
     </defs>
   </svg>
 
-  <div class="mx-auto w-[min(1180px,calc(100%-32px))] md:w-[min(1180px,calc(100%-40px))]">
+  <header class="bb-header">
+    <div class="site-brand">
+      <a class="bb-brand" href="https://bea.sh/" aria-label="Behnam Bagheri, bea.sh">
+        <img class="bb-brand-mark" src="ds/bb-mark.svg" width="36" height="36" alt="">
+        <span>Behnam Bagheri</span>
+      </a>
+      <span class="site-product"><span aria-hidden="true">/</span> <a href="#top">paste-gram</a> <span class="bb-badge bb-badge--neutral site-product-alias">ptg</span></span>
+    </div>
+    <nav class="bb-nav" aria-label="Primary navigation">
+      <a class="bb-nav-link" href="#quick-start">Quick start</a>
+      <a class="bb-nav-link" href="#ai-agents">AI agents</a>
+      <a class="bb-nav-link" href="#features">Features</a>
+      <a class="bb-nav-link" href="#faq">FAQ</a>
+      <a class="bb-nav-link" href="https://github.com/behnambagheri/fish-paste-gram">GitHub</a>
+      <button id="themeButton" type="button" class="bb-theme-toggle" aria-label="Theme: light" title="Theme: light">
+        <svg class="bb-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0-5a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1Zm0 17a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1ZM3 11h1a1 1 0 1 1 0 2H3a1 1 0 1 1 0-2Zm17 0h1a1 1 0 1 1 0 2h-1a1 1 0 1 1 0-2ZM5.64 4.22l.71.71a1 1 0 0 1-1.42 1.42l-.7-.71a1 1 0 0 1 1.41-1.42Zm12.02 12.02.71.71a1 1 0 0 1-1.42 1.41l-.7-.7a1 1 0 0 1 1.41-1.42ZM19.78 5.64l-.71.71a1 1 0 0 1-1.42-1.42l.71-.7a1 1 0 0 1 1.42 1.41ZM7.76 17.66l-.71.71a1 1 0 0 1-1.41-1.42l.7-.71a1 1 0 0 1 1.42 1.42Z"/></svg>
+        <svg class="bb-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.05 8.05 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Z"/></svg>
+      </button>
+    </nav>
+  </header>
 
-    <!-- Header -->
-    <header class="navbar sticky top-3 z-30 mt-3 min-h-0 gap-2 rounded-box hairline bg-base-100/85 p-2.5 shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-      <div class="navbar-start w-auto flex-1">
-        <a class="flex items-center gap-2.5 font-bold" href="#top" aria-label="paste-gram home">
-          <span class="grid size-9 place-items-center rounded-lg bg-primary text-primary-content"><svg class="icon size-[22px]" style="stroke-width:2.6"><use href="#i-prompt"/></svg></span>
-          <span>paste-gram</span>
-          <span class="badge badge-ghost badge-sm hidden font-mono sm:inline-flex">ptg</span>
-        </a>
-      </div>
-      <nav class="navbar-center hidden lg:flex" aria-label="Primary">
-        <ul class="menu menu-horizontal gap-1 p-0 font-semibold">
-          <li><a class="muted hover:text-base-content" href="#quick-start">Quick start</a></li>
-          <li><a class="muted hover:text-base-content" href="#ai-agents">AI agents</a></li>
-          <li><a class="muted hover:text-base-content" href="#features">Features</a></li>
-          <li><a class="muted hover:text-base-content" href="#faq">FAQ</a></li>
-        </ul>
-      </nav>
-      <div class="navbar-end w-auto gap-2">
-        <a class="btn btn-ghost btn-sm hidden md:inline-flex" href="https://github.com/behnambagheri/fish-paste-gram"><svg class="icon"><use href="#i-github"/></svg>GitHub</a>
-        <div class="join hairline rounded-field bg-base-300/60 p-0.5" role="group" aria-label="Color theme">
-          <button type="button" class="btn btn-ghost btn-sm btn-square join-item" data-theme-value="system" aria-pressed="true" title="System theme" aria-label="System theme"><svg class="icon size-4"><use href="#i-monitor"/></svg></button>
-          <button type="button" class="btn btn-ghost btn-sm btn-square join-item" data-theme-value="light" aria-pressed="false" title="Light theme" aria-label="Light theme"><svg class="icon size-4"><use href="#i-sun"/></svg></button>
-          <button type="button" class="btn btn-ghost btn-sm btn-square join-item" data-theme-value="dark" aria-pressed="false" title="Dark theme" aria-label="Dark theme"><svg class="icon size-4"><use href="#i-moon"/></svg></button>
+  <main id="top">
+
+    <!-- Hero -->
+    <section class="hero-section" aria-labelledby="hero-title">
+      <div class="hero-content">
+        <p class="bb-eyebrow">Fish shell CLI · Bot API &amp; MTProto · MCP server</p>
+        <h1 id="hero-title" class="hero-title">Terminal to Telegram, <span class="hero-accent">in one pipe.</span></h1>
+        <p class="hero-copy"><strong>paste-gram</strong> (<code>ptg</code>) sends text, piped command output, files, and whole directories to a Telegram chat through the Bot API, or as your own account through MTProto. Files over 50&nbsp;MB are compressed and split automatically. Works on Linux and macOS, over SSH, in cron and CI, and from AI coding agents.</p>
+        <div class="hero-actions">
+          <a class="bb-button bb-button--primary" href="https://github.com/behnambagheri/fish-paste-gram"><svg class="icon" aria-hidden="true"><use href="#i-github"/></svg>View on GitHub</a>
+          <a class="bb-button bb-button--secondary" href="#ai-agents"><svg class="icon" aria-hidden="true"><use href="#i-bot"/></svg>Use with AI agents</a>
+          <a class="bb-button bb-button--secondary" href="https://github.com/behnambagheri/fish-paste-gram/releases"><svg class="icon" aria-hidden="true"><use href="#i-tag"/></svg>Releases</a>
         </div>
-        <div class="dropdown dropdown-end lg:hidden">
-          <button type="button" tabindex="0" class="btn btn-ghost btn-sm btn-square" aria-label="Open menu"><svg class="icon"><use href="#i-menu"/></svg></button>
-          <ul tabindex="0" class="menu dropdown-content z-40 mt-3 w-52 rounded-box hairline bg-base-100 p-2 font-semibold shadow-xl">
-            <li><a href="#quick-start">Quick start</a></li>
-            <li><a href="#ai-agents">AI agents</a></li>
-            <li><a href="#features">Features</a></li>
-            <li><a href="#faq">FAQ</a></li>
-            <li><a href="https://github.com/behnambagheri/fish-paste-gram">GitHub</a></li>
+        <div class="bb-code-block hero-install">
+          <pre class="bb-code"><code><span class="ps" aria-hidden="true">$ </span>fisher install behnambagheri/fish-paste-gram</code></pre>
+        </div>
+      </div>
+
+      <div class="hero-panel">
+        <div class="bb-signal-card" role="status">
+          <span class="bb-signal-dot" aria-hidden="true"></span>
+          <p><b>v1.8.1</b> · open source under the MIT License</p>
+        </div>
+
+        <div class="terminal" aria-label="Example terminal session">
+          <div class="terminal-bar" aria-hidden="true"><span></span><span></span><span></span></div>
+<pre class="bb-code terminal-body"><code><span class="c"># pipe any command output</span>
+<span class="ps">❯ </span>journalctl -u nginx --since today <span class="a">|</span> ptg
+<span class="ok">✓</span> sent message to me
+<span class="c"># a folder over 50 MB: archived and split</span>
+<span class="ps">❯ </span>ptg ~/backups/db
+<span class="ok">✓</span> sent file db.tgz_aa to me
+<span class="ok">✓</span> sent file db.tgz_ab to me
+<span class="c"># ping yourself when a job is done</span>
+<span class="ps">❯ </span>./deploy.sh; ptg -m <span class="a">"deploy finished"</span></code></pre>
+        </div>
+
+        <div class="bb-metric-grid">
+          <div><strong>50&nbsp;MB+</strong><span>Auto-compressed and split</span></div>
+          <div><strong>2</strong><span>Transports: Bot API and MTProto</span></div>
+          <div><strong>4</strong><span>MCP tools for AI agents</span></div>
+          <div><strong>0</strong><span>Prompts in non-interactive shells</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="profile-band">
+      <span class="bb-profile-item"><svg class="icon" aria-hidden="true"><use href="#i-monitor"/></svg><span>Linux and macOS, GNU and BSD tools</span></span>
+      <span class="bb-profile-item"><svg class="icon" aria-hidden="true"><use href="#i-server"/></svg><span>Over SSH, in cron jobs and CI</span></span>
+      <span class="bb-profile-item"><svg class="icon" aria-hidden="true"><use href="#i-bot"/></svg><span>Claude Code, Codex, Cursor</span></span>
+    </div>
+
+    <!-- Quick start -->
+    <section id="quick-start" class="section-grid reveal" aria-labelledby="qs-title">
+      <div class="section-intro">
+        <h2 id="qs-title">Quick start</h2>
+        <p>Create a bot with @BotFather, grab your chat ID, and you are three commands away from sending your first log.</p>
+      </div>
+      <div class="card-grid card-grid--3">
+        <article class="bb-card step-card">
+          <p class="bb-eyebrow">Step 1</p>
+          <h3>Install</h3>
+          <p>With <a href="https://github.com/jorgebucaran/fisher">fisher</a>, the Fish plugin manager.</p>
+          <div class="bb-code-block"><pre class="bb-code"><code><span class="ps" aria-hidden="true">$ </span>fisher install behnambagheri/fish-paste-gram</code></pre></div>
+        </article>
+        <article class="bb-card step-card">
+          <p class="bb-eyebrow">Step 2</p>
+          <h3>Configure</h3>
+          <p>Universal variables persist across sessions.</p>
+          <div class="bb-code-block"><pre class="bb-code"><code><span class="ps" aria-hidden="true">$ </span>set -Ux TELEGRAM_TOKEN 'your_bot_token'
+<span class="ps" aria-hidden="true">$ </span>set -Ux TELEGRAM_CHAT_ID '123456789'</code></pre></div>
+        </article>
+        <article class="bb-card step-card">
+          <p class="bb-eyebrow">Step 3</p>
+          <h3>Send</h3>
+          <p>Text, stdin, files, or folders.</p>
+          <div class="bb-code-block"><pre class="bb-code"><code><span class="ps" aria-hidden="true">$ </span>df -h | ptg
+<span class="ps" aria-hidden="true">$ </span>ptg ~/logs/app.log
+<span class="ps" aria-hidden="true">$ </span>ptg ~/Documents/project</code></pre></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Use cases -->
+    <section id="use-cases" class="section-grid reveal" aria-labelledby="uc-title">
+      <div class="section-intro">
+        <h2 id="uc-title">What you can do with it</h2>
+        <p>Anything you can print or save in a shell, you can drop into a Telegram chat, from a laptop or a server three hops away.</p>
+      </div>
+      <div class="card-grid card-grid--3">
+        <article class="bb-capability-card"><span class="bb-capability-index">01</span><h3>Server logs to Telegram</h3><p>Grab log files or <code>journalctl</code> output from a remote machine over SSH without <code>scp</code>.</p></article>
+        <article class="bb-capability-card"><span class="bb-capability-index">02</span><h3>Pipe any output</h3><p><code>kubectl get pods | ptg</code>, <code>docker logs app | ptg</code>, <code>df -h | ptg</code>. Long output is chunked.</p></article>
+        <article class="bb-capability-card"><span class="bb-capability-index">03</span><h3>Shell notifications</h3><p>Alert yourself when a build, deploy, backup, or cron job is done.</p></article>
+        <article class="bb-capability-card"><span class="bb-capability-index">04</span><h3>Large files and folders</h3><p>Directories become <code>.tgz</code> archives; anything over the 50&nbsp;MB bot limit is split into 49&nbsp;MB parts.</p></article>
+        <article class="bb-capability-card"><span class="bb-capability-index">05</span><h3>Personal account mode</h3><p>Send as yourself with MTProto, to Saved Messages by default, with guardrails against spam.</p></article>
+        <article class="bb-capability-card"><span class="bb-capability-index">06</span><h3>AI agent delivery</h3><p>An MCP server and Agent Skill let Claude Code, Codex, Cursor, and other agents send you reports on Telegram.</p></article>
+      </div>
+    </section>
+
+    <!-- AI agents -->
+    <section id="ai-agents" class="section-grid reveal" aria-labelledby="ai-title">
+      <div class="section-intro">
+        <h2 id="ai-title">Built for AI agents</h2>
+        <p>Ask Claude Code, Codex, Cursor, or Claude Desktop to “send me the report on Telegram” and the file lands in your chat. paste-gram ships three pieces for agents.</p>
+      </div>
+
+      <div class="card-grid card-grid--3">
+        <article class="bb-service-card agent-card">
+          <div class="bb-service-header"><span class="icon-tile"><svg class="icon" aria-hidden="true"><use href="#i-plug"/></svg></span><span class="bb-badge bb-badge--public">MCP</span></div>
+          <div><h3>MCP server</h3><p>Tools for any MCP client: <code>send_message</code>, <code>send_files</code>, <code>list_targets</code>, and <code>check_setup</code>.</p></div>
+        </article>
+        <article class="bb-service-card agent-card">
+          <div class="bb-service-header"><span class="icon-tile"><svg class="icon" aria-hidden="true"><use href="#i-book"/></svg></span><span class="bb-badge bb-badge--neutral">Skill</span></div>
+          <div><h3>Agent Skill</h3><p>Teaches skill-aware agents when and how to call paste-gram, and what not to send.</p></div>
+        </article>
+        <article class="bb-service-card agent-card">
+          <div class="bb-service-header"><span class="icon-tile"><svg class="icon" aria-hidden="true"><use href="#i-prompt"/></svg></span><span class="bb-badge bb-badge--neutral">CLI</span></div>
+          <div><h3>Predictable CLI</h3><p>No prompts in non-interactive shells, clear errors, and non-zero exit codes on failure.</p></div>
+        </article>
+      </div>
+
+      <div class="bb-card setup-tabs" data-tabs>
+        <div class="tab-list" role="tablist" aria-label="Agent setup">
+          <button type="button" class="tab" role="tab" id="tab-claude" aria-controls="panel-claude" aria-selected="true">Claude Code</button>
+          <button type="button" class="tab" role="tab" id="tab-codex" aria-controls="panel-codex" aria-selected="false" tabindex="-1">Codex &amp; MCP clients</button>
+          <button type="button" class="tab" role="tab" id="tab-shell" aria-controls="panel-shell" aria-selected="false" tabindex="-1">Any shell</button>
+        </div>
+        <div class="tab-panel" role="tabpanel" id="panel-claude" aria-labelledby="tab-claude">
+          <p>Install the plugin (Skill and MCP server together). Set <code>TELEGRAM_TOKEN</code> and <code>TELEGRAM_CHAT_ID</code> first.</p>
+          <div class="bb-code-block"><pre class="bb-code"><code><span class="ps" aria-hidden="true">&gt; </span>/plugin marketplace add behnambagheri/fish-paste-gram
+<span class="ps" aria-hidden="true">&gt; </span>/plugin install paste-gram@paste-gram</code></pre></div>
+        </div>
+        <div class="tab-panel" role="tabpanel" id="panel-codex" aria-labelledby="tab-codex">
+          <p>Register the server. It needs the <code>mcp</code> Python package.</p>
+          <div class="bb-code-block"><pre class="bb-code"><code><span class="ps" aria-hidden="true">$ </span>python3 -m pip install mcp
+<span class="ps" aria-hidden="true">$ </span>codex mcp add paste-gram -- python3 /path/to/fish-paste-gram/mcp-server/paste_gram_mcp.py</code></pre></div>
+        </div>
+        <div class="tab-panel" role="tabpanel" id="panel-shell" aria-labelledby="tab-shell">
+          <p>Any agent with shell access can call the CLI directly, from bash, zsh, or any tool runner.</p>
+          <div class="bb-code-block"><pre class="bb-code"><code><span class="ps" aria-hidden="true">$ </span>fish -c 'paste-gram $argv' -- ./report.pdf</code></pre></div>
+        </div>
+      </div>
+
+      <div class="card-grid card-grid--2">
+        <article class="bb-card padded-card">
+          <p class="bb-eyebrow">Then just ask</p>
+          <ul class="ask-list">
+            <li class="ask-bubble">Run the tests and send me the failure report on Telegram.</li>
+            <li class="ask-bubble">When the build finishes, message me on Telegram with the result.</li>
+            <li class="ask-bubble">Compress the logs/ folder and send it to me on Telegram.</li>
           </ul>
-        </div>
+        </article>
+        <article class="bb-card padded-card">
+          <div class="bb-service-header"><span class="icon-tile"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg></span><span class="bb-badge bb-badge--request">On by default</span></div>
+          <h3>Agent guardrails</h3>
+          <p>File sends are limited to allowed folders, credential-like files such as <code>.env</code>, <code>.ssh</code>, and <code>*.pem</code> are refused, and destinations are limited to your own chat and configured aliases. See the <a href="https://github.com/behnambagheri/fish-paste-gram#-use-with-ai-agents">README</a> for every option.</p>
+        </article>
       </div>
-    </header>
+    </section>
 
-    <main id="top" class="pb-10 pt-9 md:pt-10">
-
-      <!-- Hero -->
-      <section class="grid grid-cols-1 items-center gap-9 pb-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]" aria-labelledby="hero-title">
-        <div class="min-w-0">
-          <p class="eyebrow mb-2.5">Fish shell CLI · Bot API &amp; MTProto · MCP server</p>
-          <h1 id="hero-title" class="max-w-3xl text-[clamp(2.4rem,11vw,4rem)] font-bold leading-[0.98] md:text-[clamp(2.8rem,5.6vw,5.4rem)]">Terminal to Telegram, <span class="text-primary">in one pipe.</span></h1>
-          <p class="muted mt-5 max-w-2xl text-[clamp(1rem,1.35vw,1.15rem)] leading-relaxed"><strong class="text-base-content">paste-gram</strong> (<code>ptg</code>) sends text, piped command output, files, and whole directories to a Telegram chat through the Bot API, or as your own account through MTProto. Files over 50&nbsp;MB are compressed and split automatically. Works on Linux and macOS, over SSH, in cron and CI, and from AI coding agents.</p>
-          <div class="mt-6 flex flex-wrap gap-3">
-            <a class="btn btn-primary w-full sm:w-auto" href="https://github.com/behnambagheri/fish-paste-gram"><svg class="icon"><use href="#i-github"/></svg>View on GitHub</a>
-            <a class="btn hairline bg-base-100 w-full hover:border-primary sm:w-auto" href="#ai-agents"><svg class="icon"><use href="#i-bot"/></svg>Use with AI agents</a>
-            <a class="btn hairline bg-base-100 w-full hover:border-primary sm:w-auto" href="https://github.com/behnambagheri/fish-paste-gram/releases">Releases</a>
-          </div>
-          <div class="relative mt-5 min-w-0 max-w-xl">
-            <div class="mockup-code hairline rounded-box bg-neutral pr-24 text-neutral-content before:hidden [scrollbar-width:none]" style="padding:0.85rem 0">
-              <pre data-prefix="$" class="overflow-x-auto [scrollbar-width:none]"><code class="raw">fisher install behnambagheri/fish-paste-gram</code></pre>
-            </div>
-            <button type="button" class="btn btn-xs copy-btn top-1/2! -translate-y-1/2 border-white/10 bg-slate-800 text-slate-50 hover:border-primary" data-copy="fisher install behnambagheri/fish-paste-gram" aria-label="Copy install command"><svg class="icon size-3.5"><use href="#i-copy"/></svg><span>Copy</span></button>
-          </div>
-        </div>
-
-        <div class="grid min-w-0 max-w-3xl gap-3.5">
-          <div role="status" class="alert surface hairline glow rounded-box px-4 py-3.5">
-            <span class="status status-success status-lg" aria-hidden="true"></span>
-            <span class="muted font-semibold"><b class="text-base-content">v1.8.1</b> · open source under the MIT License</span>
-          </div>
-
-          <div class="mockup-window hairline glow bg-neutral text-neutral-content" aria-label="Example terminal session">
-            <div class="mockup-code rounded-none bg-neutral pt-1 pb-4 before:hidden">
-<pre data-prefix=" "><code class="raw c"># pipe any command output</code></pre>
-<pre data-prefix="❯" class="text-success"><code class="raw text-neutral-content">journalctl -u nginx --since today <span class="a">|</span> ptg</code></pre>
-<pre data-prefix=" "><code class="raw"><span class="ok">✓</span> sent message to me</code></pre>
-<pre data-prefix=" "><code class="raw c"># a folder over 50 MB: archived and split</code></pre>
-<pre data-prefix="❯" class="text-success"><code class="raw text-neutral-content">ptg ~/backups/db</code></pre>
-<pre data-prefix=" "><code class="raw"><span class="ok">✓</span> sent file db.tgz_aa to me</code></pre>
-<pre data-prefix=" "><code class="raw"><span class="ok">✓</span> sent file db.tgz_ab to me</code></pre>
-<pre data-prefix=" "><code class="raw c"># ping yourself when a job is done</code></pre>
-<pre data-prefix="❯" class="text-success"><code class="raw text-neutral-content">./deploy.sh; ptg -m <span class="a">"deploy finished"</span></code></pre>
-            </div>
-          </div>
-
-          <div class="metric-grid grid grid-cols-1 overflow-hidden rounded-box surface hairline glow sm:grid-cols-2">
-            <div class="stat place-content-start border-[var(--line)]"><div class="stat-value text-[clamp(1.9rem,3.4vw,2.6rem)]">50&nbsp;MB+</div><div class="stat-desc muted mt-1 whitespace-normal text-sm font-semibold">Auto-compressed and split</div></div>
-            <div class="stat place-content-start border-[var(--line)]"><div class="stat-value text-[clamp(1.9rem,3.4vw,2.6rem)]">2</div><div class="stat-desc muted mt-1 whitespace-normal text-sm font-semibold">Transports: Bot API and MTProto</div></div>
-            <div class="stat place-content-start border-[var(--line)]"><div class="stat-value text-[clamp(1.9rem,3.4vw,2.6rem)]">4</div><div class="stat-desc muted mt-1 whitespace-normal text-sm font-semibold">MCP tools for AI agents</div></div>
-            <div class="stat place-content-start border-[var(--line)]"><div class="stat-value text-[clamp(1.9rem,3.4vw,2.6rem)]">0</div><div class="stat-desc muted mt-1 whitespace-normal text-sm font-semibold">Prompts in non-interactive shells</div></div>
-          </div>
-        </div>
-      </section>
-
-      <div class="grid gap-2.5 pb-10 pt-1.5 md:grid-cols-3">
-        <span class="muted flex items-center gap-2.5 rounded-box hairline bg-base-100/90 px-3.5 py-3 font-semibold"><svg class="icon text-primary"><use href="#i-monitor"/></svg>Linux and macOS, GNU and BSD tools</span>
-        <span class="muted flex items-center gap-2.5 rounded-box hairline bg-base-100/90 px-3.5 py-3 font-semibold"><svg class="icon text-primary"><use href="#i-server"/></svg>Over SSH, in cron jobs and CI</span>
-        <span class="muted flex items-center gap-2.5 rounded-box hairline bg-base-100/90 px-3.5 py-3 font-semibold"><svg class="icon text-primary"><use href="#i-bot"/></svg>Claude Code, Codex, Cursor</span>
+    <!-- Features -->
+    <section id="features" class="section-grid reveal" aria-labelledby="ft-title">
+      <div class="section-intro">
+        <h2 id="ft-title">Features</h2>
+        <p>Small enough to read in one sitting, complete enough for daily ops work.</p>
       </div>
+      <ul class="work-list">
+        <li>Text, stdin, files, directories, and multiple inputs bundled into one named archive</li>
+        <li>Captions with <code>-m</code>, editor support for long captions, and Telegram HTML with <code>--html</code></li>
+        <li>Send to several chats at once with <code>--id</code> and a JSON alias map</li>
+        <li>Optional hostname, command line, and path in captions</li>
+        <li>Custom Bot API URL, HTTP/SOCKS proxy, and MTProxy support</li>
+        <li>Fish completions and verbose diagnostics with redacted secrets</li>
+        <li>MCP server and Agent Skill for Claude Code, Codex, Cursor, and other AI agents</li>
+        <li>Default transport per machine with <code>PASTEGRAM_DEFAULT_MODE=bot|mtproto</code></li>
+      </ul>
+    </section>
 
-      <!-- Quick start -->
-      <section id="quick-start" class="reveal border-t border-[var(--line)] pb-8 pt-12" aria-labelledby="qs-title">
-        <div class="mb-6 grid items-end gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(300px,0.7fr)] lg:gap-7">
-          <h2 id="qs-title" class="text-[clamp(2rem,3.4vw,3.4rem)] font-bold leading-none">Quick start</h2>
-          <p class="muted max-w-xl">Create a bot with @BotFather, grab your chat ID, and you are three commands away from sending your first log.</p>
-        </div>
-        <ul class="steps steps-vertical mb-2 w-full md:steps-horizontal">
-          <li class="step step-primary">Install</li>
-          <li class="step step-primary">Configure</li>
-          <li class="step step-primary">Send</li>
-        </ul>
-        <div class="grid grid-cols-1 gap-3.5 md:grid-cols-3 [&>*]:min-w-0">
-          <article class="card card-border surface hairline lift">
-            <div class="card-body p-5">
-              <p class="text-xs font-extrabold uppercase tracking-[0.11em] text-success">Step 1</p>
-              <h3 class="card-title text-lg">Install</h3>
-              <p class="muted flex-none text-[0.95rem]">With <a class="link link-primary font-semibold no-underline hover:underline" href="https://github.com/jorgebucaran/fisher">fisher</a>, the Fish plugin manager.</p>
-              <div class="code-block relative mt-2"><div class="mockup-code hairline bg-neutral text-neutral-content"><pre data-prefix="$"><code class="raw">fisher install behnambagheri/fish-paste-gram</code></pre></div></div>
-            </div>
-          </article>
-          <article class="card card-border surface hairline lift">
-            <div class="card-body p-5">
-              <p class="text-xs font-extrabold uppercase tracking-[0.11em] text-success">Step 2</p>
-              <h3 class="card-title text-lg">Configure</h3>
-              <p class="muted flex-none text-[0.95rem]">Universal variables persist across sessions.</p>
-              <div class="code-block relative mt-2"><div class="mockup-code hairline bg-neutral text-neutral-content"><pre data-prefix="$"><code class="raw">set -Ux TELEGRAM_TOKEN 'your_bot_token'</code></pre><pre data-prefix="$"><code class="raw">set -Ux TELEGRAM_CHAT_ID '123456789'</code></pre></div></div>
-            </div>
-          </article>
-          <article class="card card-border surface hairline lift">
-            <div class="card-body p-5">
-              <p class="text-xs font-extrabold uppercase tracking-[0.11em] text-success">Step 3</p>
-              <h3 class="card-title text-lg">Send</h3>
-              <p class="muted flex-none text-[0.95rem]">Text, stdin, files, or folders.</p>
-              <div class="code-block relative mt-2"><div class="mockup-code hairline bg-neutral text-neutral-content"><pre data-prefix="$"><code class="raw">df -h | ptg</code></pre><pre data-prefix="$"><code class="raw">ptg ~/logs/app.log</code></pre><pre data-prefix="$"><code class="raw">ptg ~/Documents/project</code></pre></div></div>
-            </div>
-          </article>
-        </div>
-      </section>
+    <!-- FAQ -->
+    <section id="faq" class="section-grid reveal" aria-labelledby="faq-title">
+      <div class="section-intro">
+        <h2 id="faq-title">FAQ</h2>
+        <p>Short answers to the questions people ask most.</p>
+      </div>
+      <div class="faq-list">
+        <details class="faq-item" open>
+          <summary><h3>How do I send a file to Telegram from the command line?</h3></summary>
+          <p>Install paste-gram, set <code>TELEGRAM_TOKEN</code> and <code>TELEGRAM_CHAT_ID</code>, then run <code>ptg /path/to/file</code>. Directories work the same way.</p>
+        </details>
+        <details class="faq-item">
+          <summary><h3>How do I pipe command output to Telegram?</h3></summary>
+          <p>Pipe it into <code>ptg</code>, for example <code>some_command 2&gt;&amp;1 | ptg</code>. Long output is split across several messages.</p>
+        </details>
+        <details class="faq-item">
+          <summary><h3>Can a Telegram bot send files larger than 50&nbsp;MB?</h3></summary>
+          <p>The Bot API caps uploads at 50&nbsp;MB, so paste-gram compresses and splits large inputs into 49&nbsp;MB parts. Rejoin them with <code>cat archive.tgz_* &gt; archive.tgz</code>. MTProto mode sends the file whole.</p>
+        </details>
+        <details class="faq-item">
+          <summary><h3>Does it work in bash or zsh?</h3></summary>
+          <p>Yes, as long as Fish is installed: <code>fish -c 'paste-gram $argv' -- ./report.pdf</code>.</p>
+        </details>
+        <details class="faq-item">
+          <summary><h3>Can AI agents like Claude Code or Codex use it?</h3></summary>
+          <p>Yes. It ships an MCP server and an Agent Skill. See <a href="#ai-agents">Built for AI agents</a>.</p>
+        </details>
+        <details class="faq-item">
+          <summary><h3>Is it free?</h3></summary>
+          <p>Yes. paste-gram is open source under the MIT License. See the <a href="https://github.com/behnambagheri/fish-paste-gram/blob/main/LICENSE">license</a>.</p>
+        </details>
+      </div>
+    </section>
+  </main>
 
-      <!-- Use cases -->
-      <section id="use-cases" class="reveal border-t border-[var(--line)] pb-8 pt-12" aria-labelledby="uc-title">
-        <div class="mb-6 grid items-end gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(300px,0.7fr)] lg:gap-7">
-          <h2 id="uc-title" class="text-[clamp(2rem,3.4vw,3.4rem)] font-bold leading-none">What you can do with it</h2>
-          <p class="muted max-w-xl">Anything you can print or save in a shell, you can drop into a Telegram chat, from a laptop or a server three hops away.</p>
-        </div>
-        <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
-          <article class="card card-border surface hairline lift"><div class="card-body p-5"><span class="mb-5 font-extrabold text-primary">01</span><h3 class="card-title text-lg">Server logs to Telegram</h3><p class="muted">Grab log files or <code>journalctl</code> output from a remote machine over SSH without <code>scp</code>.</p></div></article>
-          <article class="card card-border surface hairline lift"><div class="card-body p-5"><span class="mb-5 font-extrabold text-primary">02</span><h3 class="card-title text-lg">Pipe any output</h3><p class="muted"><code>kubectl get pods | ptg</code>, <code>docker logs app | ptg</code>, <code>df -h | ptg</code>. Long output is chunked.</p></div></article>
-          <article class="card card-border surface hairline lift"><div class="card-body p-5"><span class="mb-5 font-extrabold text-primary">03</span><h3 class="card-title text-lg">Shell notifications</h3><p class="muted">Alert yourself when a build, deploy, backup, or cron job is done.</p></div></article>
-          <article class="card card-border surface hairline lift"><div class="card-body p-5"><span class="mb-5 font-extrabold text-primary">04</span><h3 class="card-title text-lg">Large files and folders</h3><p class="muted">Directories become <code>.tgz</code> archives; anything over the 50&nbsp;MB bot limit is split into 49&nbsp;MB parts.</p></div></article>
-          <article class="card card-border surface hairline lift"><div class="card-body p-5"><span class="mb-5 font-extrabold text-primary">05</span><h3 class="card-title text-lg">Personal account mode</h3><p class="muted">Send as yourself with MTProto, to Saved Messages by default, with guardrails against spam.</p></div></article>
-          <article class="card card-border surface hairline lift"><div class="card-body p-5"><span class="mb-5 font-extrabold text-primary">06</span><h3 class="card-title text-lg">AI agent delivery</h3><p class="muted">An MCP server and Agent Skill let Claude Code, Codex, Cursor, and other agents send you reports on Telegram.</p></div></article>
-        </div>
-      </section>
-
-      <!-- AI agents -->
-      <section id="ai-agents" class="reveal border-t border-[var(--line)] pb-8 pt-12" aria-labelledby="ai-title">
-        <div class="mb-6 grid items-end gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(300px,0.7fr)] lg:gap-7">
-          <h2 id="ai-title" class="text-[clamp(2rem,3.4vw,3.4rem)] font-bold leading-none">Built for AI agents</h2>
-          <p class="muted max-w-xl">Ask Claude Code, Codex, Cursor, or Claude Desktop to “send me the report on Telegram” and the file lands in your chat. paste-gram ships three pieces for agents.</p>
-        </div>
-
-        <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
-          <article class="card card-border hairline lift bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-primary)_13%,transparent),transparent_55%)] surface">
-            <div class="card-body p-5">
-              <div class="mb-4 flex items-center justify-between"><span class="grid size-10 place-items-center rounded-lg bg-primary/12 text-primary"><svg class="icon"><use href="#i-plug"/></svg></span><span class="badge badge-success badge-soft font-bold">MCP</span></div>
-              <h3 class="card-title text-lg">MCP server</h3>
-              <p class="muted">Tools for any MCP client: <code>send_message</code>, <code>send_files</code>, <code>list_targets</code>, and <code>check_setup</code>.</p>
-            </div>
-          </article>
-          <article class="card card-border surface hairline lift">
-            <div class="card-body p-5">
-              <div class="mb-4 flex items-center justify-between"><span class="grid size-10 place-items-center rounded-lg bg-primary/12 text-primary"><svg class="icon"><use href="#i-book"/></svg></span><span class="badge badge-ghost font-bold">Skill</span></div>
-              <h3 class="card-title text-lg">Agent Skill</h3>
-              <p class="muted">Teaches skill-aware agents when and how to call paste-gram, and what not to send.</p>
-            </div>
-          </article>
-          <article class="card card-border surface hairline lift">
-            <div class="card-body p-5">
-              <div class="mb-4 flex items-center justify-between"><span class="grid size-10 place-items-center rounded-lg bg-primary/12 text-primary"><svg class="icon"><use href="#i-prompt"/></svg></span><span class="badge badge-ghost font-bold">CLI</span></div>
-              <h3 class="card-title text-lg">Predictable CLI</h3>
-              <p class="muted">No prompts in non-interactive shells, clear errors, and non-zero exit codes on failure.</p>
-            </div>
-          </article>
-        </div>
-
-        <div class="tabs tabs-box surface hairline mt-3.5 p-1.5" role="tablist" aria-label="Agent setup">
-          <input type="radio" name="agent_setup" class="tab font-semibold" aria-label="Claude Code" checked>
-          <div class="tab-content p-4 md:p-5">
-            <p class="muted">Install the plugin (Skill and MCP server together). Set <code>TELEGRAM_TOKEN</code> and <code>TELEGRAM_CHAT_ID</code> first.</p>
-            <div class="code-block relative mt-3"><div class="mockup-code hairline bg-neutral text-neutral-content"><pre data-prefix="&gt;"><code class="raw">/plugin marketplace add behnambagheri/fish-paste-gram</code></pre><pre data-prefix="&gt;"><code class="raw">/plugin install paste-gram@paste-gram</code></pre></div></div>
-          </div>
-          <input type="radio" name="agent_setup" class="tab font-semibold" aria-label="Codex & MCP clients">
-          <div class="tab-content p-4 md:p-5">
-            <p class="muted">Register the server. It needs the <code>mcp</code> Python package.</p>
-            <div class="code-block relative mt-3"><div class="mockup-code hairline bg-neutral text-neutral-content"><pre data-prefix="$"><code class="raw">python3 -m pip install mcp</code></pre><pre data-prefix="$"><code class="raw">codex mcp add paste-gram -- python3 /path/to/fish-paste-gram/mcp-server/paste_gram_mcp.py</code></pre></div></div>
-          </div>
-          <input type="radio" name="agent_setup" class="tab font-semibold" aria-label="Any shell">
-          <div class="tab-content p-4 md:p-5">
-            <p class="muted">Any agent with shell access can call the CLI directly, from bash, zsh, or any tool runner.</p>
-            <div class="code-block relative mt-3"><div class="mockup-code hairline bg-neutral text-neutral-content"><pre data-prefix="$"><code class="raw">fish -c 'paste-gram $argv' -- ./report.pdf</code></pre></div></div>
-          </div>
-        </div>
-
-        <div class="mt-3.5 grid grid-cols-1 gap-3.5 md:grid-cols-2 [&>*]:min-w-0">
-          <article class="card card-border surface hairline">
-            <div class="card-body p-5">
-              <p class="text-xs font-extrabold uppercase tracking-[0.11em] text-success">Then just ask</p>
-              <ul class="mt-1 grid gap-2.5">
-                <li class="chat chat-end"><div class="chat-bubble chat-bubble-primary text-[0.95rem] font-medium">Run the tests and send me the failure report on Telegram.</div></li>
-                <li class="chat chat-end"><div class="chat-bubble chat-bubble-primary text-[0.95rem] font-medium">When the build finishes, message me on Telegram with the result.</div></li>
-                <li class="chat chat-end"><div class="chat-bubble chat-bubble-primary text-[0.95rem] font-medium">Compress the logs/ folder and send it to me on Telegram.</div></li>
-              </ul>
-            </div>
-          </article>
-          <article class="card card-border surface hairline">
-            <div class="card-body p-5">
-              <div class="mb-2 flex items-center justify-between"><span class="grid size-10 place-items-center rounded-lg bg-primary/12 text-primary"><svg class="icon"><use href="#i-shield"/></svg></span><span class="badge badge-warning badge-soft font-bold">On by default</span></div>
-              <h3 class="card-title text-lg">Agent guardrails</h3>
-              <p class="muted">File sends are limited to allowed folders, credential-like files such as <code>.env</code>, <code>.ssh</code>, and <code>*.pem</code> are refused, and destinations are limited to your own chat and configured aliases. See the <a class="link link-primary font-bold no-underline hover:underline" href="https://github.com/behnambagheri/fish-paste-gram#-use-with-ai-agents">README</a> for every option.</p>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <!-- Features -->
-      <section id="features" class="reveal border-t border-[var(--line)] pb-8 pt-12" aria-labelledby="ft-title">
-        <div class="mb-6 grid items-end gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(300px,0.7fr)] lg:gap-7">
-          <h2 id="ft-title" class="text-[clamp(2rem,3.4vw,3.4rem)] font-bold leading-none">Features</h2>
-          <p class="muted max-w-xl">Small enough to read in one sitting, complete enough for daily ops work.</p>
-        </div>
-        <ul class="dash-list gap-x-9 md:columns-2 [&>li]:mb-3.5">
-          <li>Text, stdin, files, directories, and multiple inputs bundled into one named archive</li>
-          <li>Captions with <code>-m</code>, editor support for long captions, and Telegram HTML with <code>--html</code></li>
-          <li>Send to several chats at once with <code>--id</code> and a JSON alias map</li>
-          <li>Optional hostname, command line, and path in captions</li>
-          <li>Custom Bot API URL, HTTP/SOCKS proxy, and MTProxy support</li>
-          <li>Fish completions and verbose diagnostics with redacted secrets</li>
-          <li>MCP server and Agent Skill for Claude Code, Codex, Cursor, and other AI agents</li>
-          <li>Default transport per machine with <code>PASTEGRAM_DEFAULT_MODE=bot|mtproto</code></li>
-        </ul>
-      </section>
-
-      <!-- FAQ -->
-      <section id="faq" class="reveal border-t border-[var(--line)] pb-8 pt-12" aria-labelledby="faq-title">
-        <div class="mb-6 grid items-end gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(300px,0.7fr)] lg:gap-7">
-          <h2 id="faq-title" class="text-[clamp(2rem,3.4vw,3.4rem)] font-bold leading-none">FAQ</h2>
-          <p class="muted max-w-xl">Short answers to the questions people ask most.</p>
-        </div>
-        <div class="grid max-w-4xl gap-2.5">
-          <details class="collapse collapse-plus surface hairline" open>
-            <summary class="collapse-title font-bold"><h3>How do I send a file to Telegram from the command line?</h3></summary>
-            <div class="collapse-content muted"><p>Install paste-gram, set <code>TELEGRAM_TOKEN</code> and <code>TELEGRAM_CHAT_ID</code>, then run <code>ptg /path/to/file</code>. Directories work the same way.</p></div>
-          </details>
-          <details class="collapse collapse-plus surface hairline">
-            <summary class="collapse-title font-bold"><h3>How do I pipe command output to Telegram?</h3></summary>
-            <div class="collapse-content muted"><p>Pipe it into <code>ptg</code>, for example <code>some_command 2&gt;&amp;1 | ptg</code>. Long output is split across several messages.</p></div>
-          </details>
-          <details class="collapse collapse-plus surface hairline">
-            <summary class="collapse-title font-bold"><h3>Can a Telegram bot send files larger than 50&nbsp;MB?</h3></summary>
-            <div class="collapse-content muted"><p>The Bot API caps uploads at 50&nbsp;MB, so paste-gram compresses and splits large inputs into 49&nbsp;MB parts. Rejoin them with <code>cat archive.tgz_* &gt; archive.tgz</code>. MTProto mode sends the file whole.</p></div>
-          </details>
-          <details class="collapse collapse-plus surface hairline">
-            <summary class="collapse-title font-bold"><h3>Does it work in bash or zsh?</h3></summary>
-            <div class="collapse-content muted"><p>Yes, as long as Fish is installed: <code>fish -c 'paste-gram $argv' -- ./report.pdf</code>.</p></div>
-          </details>
-          <details class="collapse collapse-plus surface hairline">
-            <summary class="collapse-title font-bold"><h3>Can AI agents like Claude Code or Codex use it?</h3></summary>
-            <div class="collapse-content muted"><p>Yes. It ships an MCP server and an Agent Skill. See <a class="link link-primary font-bold no-underline hover:underline" href="#ai-agents">Built for AI agents</a>.</p></div>
-          </details>
-          <details class="collapse collapse-plus surface hairline">
-            <summary class="collapse-title font-bold"><h3>Is it free?</h3></summary>
-            <div class="collapse-content muted"><p>Yes. paste-gram is open source under the MIT License. See the <a class="link link-primary font-bold no-underline hover:underline" href="https://github.com/behnambagheri/fish-paste-gram/blob/main/LICENSE">license</a>.</p></div>
-          </details>
-        </div>
-      </section>
-    </main>
-
-    <footer class="footer muted items-center border-t border-[var(--line)] pb-10 pt-7 sm:footer-horizontal">
-      <aside><p>paste-gram by <a class="font-bold text-base-content hover:text-primary" href="https://bea.sh/">Behnam Bagheri</a></p></aside>
-      <nav class="flex flex-wrap gap-5 font-bold text-base-content sm:justify-self-end">
-        <a class="hover:text-primary" href="https://github.com/behnambagheri/fish-paste-gram">Source</a>
-        <a class="hover:text-primary" href="https://github.com/behnambagheri/fish-paste-gram/blob/main/CHANGELOG.md">Changelog</a>
-        <a class="hover:text-primary" href="https://github.com/behnambagheri/fish-paste-gram/issues">Issues</a>
-        <a class="hover:text-primary" href="https://github.com/behnambagheri">GitHub</a>
-      </nav>
-    </footer>
-  </div>
+  <footer class="bb-footer">
+    <p>paste-gram by <a href="https://bea.sh/">Behnam Bagheri</a></p>
+    <nav class="footer-links" aria-label="Project links">
+      <a href="https://github.com/behnambagheri/fish-paste-gram">Source</a>
+      <a href="https://github.com/behnambagheri/fish-paste-gram/blob/main/CHANGELOG.md">Changelog</a>
+      <a href="https://github.com/behnambagheri/fish-paste-gram/issues">Issues</a>
+      <a href="https://github.com/behnambagheri">GitHub</a>
+      <a href="#top">Back to top</a>
+    </nav>
+  </footer>
 
   <script>
     (function () {
-      var KEY = 'ptg-theme';
+      var THEME_KEY = 'bb-theme';
       var root = document.documentElement;
-      var media = window.matchMedia('(prefers-color-scheme: dark)');
-      var buttons = document.querySelectorAll('[data-theme-value]');
+      var button = document.getElementById('themeButton');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
       var themeMeta = document.querySelectorAll('meta[name="theme-color"]');
 
-      function readPref() {
-        try { return localStorage.getItem(KEY) || 'system'; } catch (e) { return 'system'; }
+      // Light or dark only: the OS decides until the visitor picks one, then the pick is remembered (same as bea.sh).
+      function savedTheme() {
+        var theme = null;
+        try { theme = localStorage.getItem(THEME_KEY); } catch (e) {}
+        return theme === 'light' || theme === 'dark' ? theme : null;
       }
 
-      function apply(pref) {
-        var dark = pref === 'dark' || (pref === 'system' && media.matches);
-        root.setAttribute('data-theme', dark ? 'bea-dark' : 'bea-light');
-        themeMeta.forEach(function (m) { m.setAttribute('content', dark ? '#0c0f14' : '#f8fafc'); });
-        buttons.forEach(function (b) {
-          var on = b.getAttribute('data-theme-value') === pref;
-          b.setAttribute('aria-pressed', String(on));
-          b.classList.toggle('btn-active', on);
-          b.classList.toggle('text-primary', on);
-        });
+      function currentTheme() {
+        return savedTheme() || (prefersDark.matches ? 'dark' : 'light');
       }
 
-      buttons.forEach(function (b) {
-        b.addEventListener('click', function () {
-          var pref = b.getAttribute('data-theme-value');
-          try {
-            if (pref === 'system') localStorage.removeItem(KEY);
-            else localStorage.setItem(KEY, pref);
-          } catch (e) {}
-          apply(pref);
+      function applyTheme() {
+        var theme = currentTheme();
+        if (savedTheme()) root.setAttribute('data-theme', theme);
+        else root.removeAttribute('data-theme');
+        var label = 'Theme: ' + theme + '. Switch to ' + (theme === 'dark' ? 'light' : 'dark');
+        button.dataset.current = theme;
+        button.setAttribute('aria-label', label);
+        button.title = label;
+        // Keep the browser chrome in step with the page background token.
+        var bg = getComputedStyle(root).getPropertyValue('--bb-bg').trim();
+        if (bg) themeMeta.forEach(function (m) { m.setAttribute('content', bg); });
+      }
+
+      button.addEventListener('click', function () {
+        try { localStorage.setItem(THEME_KEY, currentTheme() === 'dark' ? 'light' : 'dark'); } catch (e) {}
+        applyTheme();
+      });
+      prefersDark.addEventListener('change', applyTheme);
+      applyTheme();
+
+      // Tabs: arrow keys move between tabs; without JS every panel stays visible.
+      document.querySelectorAll('[data-tabs]').forEach(function (group) {
+        var tabs = Array.prototype.slice.call(group.querySelectorAll('[role="tab"]'));
+        function select(tab, focus) {
+          tabs.forEach(function (t) {
+            var on = t === tab;
+            t.setAttribute('aria-selected', String(on));
+            t.tabIndex = on ? 0 : -1;
+            document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+          });
+          if (focus) tab.focus();
+        }
+        tabs.forEach(function (tab, i) {
+          tab.addEventListener('click', function () { select(tab, false); });
+          tab.addEventListener('keydown', function (e) {
+            var next = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : null;
+            if (next === null) return;
+            e.preventDefault();
+            select(tabs[(next + tabs.length) % tabs.length], true);
+          });
         });
-      });
-
-      // Follow OS changes while on "system".
-      media.addEventListener('change', function () {
-        if (readPref() === 'system') apply('system');
-      });
-
-      apply(readPref());
-
-      // Close the mobile dropdown after picking a link.
-      document.querySelectorAll('.dropdown-content a').forEach(function (a) {
-        a.addEventListener('click', function () { document.activeElement && document.activeElement.blur(); });
-      });
-
-      // Copy buttons for every code block.
-      document.querySelectorAll('.code-block').forEach(function (block) {
-        var lines = Array.prototype.map.call(block.querySelectorAll('code'), function (c) { return c.textContent; });
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'btn btn-xs copy-btn border-white/10 bg-slate-800 text-slate-50 hover:border-primary';
-        btn.setAttribute('aria-label', 'Copy code');
-        btn.setAttribute('data-copy', lines.join('\n'));
-        btn.innerHTML = '<svg class="icon size-3.5"><use href="#i-copy"/></svg><span>Copy</span>';
-        block.appendChild(btn);
+        select(tabs[0], false);
       });
 
       function copy(text) {
@@ -632,22 +416,40 @@
         });
       }
 
-      document.querySelectorAll('[data-copy]').forEach(function (btn) {
+      // A copy button for every code block; prompt markers (.ps) are not copied.
+      document.querySelectorAll('.bb-code-block').forEach(function (block) {
+        var code = block.querySelector('code');
+        if (!code) return;
+        var clone = code.cloneNode(true);
+        clone.querySelectorAll('.ps').forEach(function (ps) { ps.remove(); });
+        var text = clone.textContent.trim();
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'bb-code-copy';
+        btn.textContent = 'Copy';
+        btn.setAttribute('aria-label', 'Copy code');
+        block.appendChild(btn);
         btn.addEventListener('click', function () {
-          copy(btn.getAttribute('data-copy')).then(function () {
-            var use = btn.querySelector('use');
-            var label = btn.querySelector('span');
-            use.setAttribute('href', '#i-check');
-            label.textContent = 'Copied';
-            btn.classList.add('text-emerald-300');
-            setTimeout(function () {
-              use.setAttribute('href', '#i-copy');
-              label.textContent = 'Copy';
-              btn.classList.remove('text-emerald-300');
-            }, 1600);
-          });
+          copy(text).then(function () { btn.textContent = 'Copied'; }, function () { btn.textContent = 'Failed'; })
+            .then(function () { setTimeout(function () { btn.textContent = 'Copy'; }, 1400); });
         });
       });
+
+      // Highlight the nav link of the section in view.
+      var navLinks = Array.prototype.slice.call(document.querySelectorAll('.bb-nav a[href^="#"]'));
+      var targets = navLinks.map(function (a) { return document.getElementById(a.getAttribute('href').slice(1)); });
+      var frame = 0;
+      function updateNav() {
+        frame = 0;
+        var current = null;
+        targets.forEach(function (t) { if (t && t.getBoundingClientRect().top <= 120) current = t.id; });
+        navLinks.forEach(function (a) {
+          if (a.getAttribute('href') === '#' + current) a.setAttribute('aria-current', 'true');
+          else a.removeAttribute('aria-current');
+        });
+      }
+      window.addEventListener('scroll', function () { if (!frame) frame = requestAnimationFrame(updateNav); }, { passive: true });
+      updateNav();
 
       // Reveal sections as they scroll into view.
       var reveals = document.querySelectorAll('.reveal');

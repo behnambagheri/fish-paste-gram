@@ -1,0 +1,254 @@
+/*
+ * Behnam Bagheri Design System - tokens (v1)
+ * https://bea.sh/ds/
+ *
+ * Usage: set the theme and product on <html>:
+ *   <html data-product="teal">          product accent (default: blue)
+ *   <html data-theme="dark">            force a theme (omit for the OS preference)
+ *
+ * Breakpoints (media queries cannot read custom properties, so they are documented here):
+ *   --bb-bp-sm: 480px   phones: single-column grids, full-width buttons
+ *   --bb-bp-md: 760px   tablets: header stacks, cards go single column
+ *   --bb-bp-lg: 1040px  small laptops: two-column layouts collapse
+ *
+ * Product accents: each family sets raw light/dark values; the theme blocks below map them to
+ * --bb-accent, --bb-accent-hover, --bb-accent-subtle, --bb-text-accent and --bb-border-accent.
+ *   blue     bea.sh, behnambagheri.ir, blog (default)
+ *   teal     ip, tg proxy
+ *   cyan     docker proxy, registry, desk
+ *   indigo   clash and sing-box converters
+ *   violet   paste, shortener, drive
+ *   fuchsia  matrix, element, meet
+ */
+
+:root {
+  /* Typography */
+  --bb-font-sans: 'Space Grotesk', Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --bb-font-fa: Vazirmatn, 'Segoe UI', Tahoma, system-ui, -apple-system, sans-serif;
+  --bb-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  --bb-line-height: 1.6;
+  --bb-line-height-fa: 1.9;
+  --bb-tracking-caps: 0.12em;
+
+  /* Spacing */
+  --bb-space-2xs: 2px;
+  --bb-space-xs: 4px;
+  --bb-space-sm: 8px;
+  --bb-space-md: 12px;
+  --bb-space-lg: 16px;
+  --bb-space-xl: 20px;
+  --bb-space-2xl: 24px;
+  --bb-space-3xl: 32px;
+  --bb-space-4xl: 40px;
+  --bb-space-5xl: 56px;
+  --bb-space-6xl: 72px;
+
+  /* Radius */
+  --bb-radius-sm: 4px;
+  --bb-radius-md: 8px;
+  --bb-radius-lg: 14px;
+  --bb-radius-full: 999px;
+
+  /* Layout */
+  --bb-container: 1180px;
+  --bb-grid-size: 72px;
+  --bb-bp-sm: 480px;
+  --bb-bp-md: 760px;
+  --bb-bp-lg: 1040px;
+
+  /* Motion */
+  --bb-duration: 180ms;
+  --bb-ease: ease;
+
+  /* Code: always dark, in both themes */
+  --bb-code-bg: #0f172a;
+  --bb-code-raised: #1e293b;
+  --bb-code-text: #e5e7eb;
+
+  /* Product accent: blue (default) */
+  --bb-accent-light: #2563eb;
+  --bb-accent-hover-light: #1d4ed8;
+  --bb-accent-dark: #60a5fa;
+  --bb-accent-hover-dark: #93c5fd;
+}
+
+[data-product='teal'] {
+  --bb-accent-light: #0f766e;
+  --bb-accent-hover-light: #115e59;
+  --bb-accent-dark: #2dd4bf;
+  --bb-accent-hover-dark: #5eead4;
+}
+
+[data-product='cyan'] {
+  --bb-accent-light: #0e7490;
+  --bb-accent-hover-light: #155e75;
+  --bb-accent-dark: #22d3ee;
+  --bb-accent-hover-dark: #67e8f9;
+}
+
+[data-product='indigo'] {
+  --bb-accent-light: #4f46e5;
+  --bb-accent-hover-light: #4338ca;
+  --bb-accent-dark: #818cf8;
+  --bb-accent-hover-dark: #a5b4fc;
+}
+
+[data-product='violet'] {
+  --bb-accent-light: #7c3aed;
+  --bb-accent-hover-light: #6d28d9;
+  --bb-accent-dark: #a78bfa;
+  --bb-accent-hover-dark: #c4b5fd;
+}
+
+[data-product='fuchsia'] {
+  --bb-accent-light: #a21caf;
+  --bb-accent-hover-light: #86198f;
+  --bb-accent-dark: #e879f9;
+  --bb-accent-hover-dark: #f0abfc;
+}
+
+/* Light theme (default) */
+:root,
+[data-theme='light'] {
+  --bb-bg: #f8fafc;
+  --bb-surface: #ffffff;
+  --bb-surface-strong: #eef2ff;
+  --bb-text: #101114;
+  --bb-muted: #5f6572;
+  --bb-faint: #e5e7eb;
+  --bb-line: rgba(16, 17, 20, 0.11);
+  --bb-shadow: 0 24px 70px rgba(15, 23, 42, 0.1);
+  --bb-shadow-header: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --bb-shadow-hover: 0 20px 48px rgba(15, 23, 42, 0.12);
+
+  --bb-accent: var(--bb-accent-light);
+  --bb-accent-hover: var(--bb-accent-hover-light);
+  --bb-accent-subtle: color-mix(in srgb, var(--bb-accent) 12%, transparent);
+  --bb-text-accent: var(--bb-accent);
+  --bb-border-accent: color-mix(in srgb, var(--bb-accent) 45%, var(--bb-line));
+  --bb-on-accent: #ffffff;
+
+  --bb-success: #047857;
+  --bb-warning: #b45309;
+  --bb-danger: #b91c1c;
+  --bb-success-subtle: color-mix(in srgb, var(--bb-success) 9%, transparent);
+  --bb-warning-subtle: color-mix(in srgb, var(--bb-warning) 9%, transparent);
+  --bb-danger-subtle: color-mix(in srgb, var(--bb-danger) 9%, transparent);
+
+  --bb-keystone: #d4a72c;
+  --bb-keystone-text: #b45309;
+
+  color-scheme: light;
+}
+
+/* Dark theme: OS preference unless light is forced, or forced with data-theme="dark" */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bb-bg: #0c0f14;
+    --bb-surface: #141821;
+    --bb-surface-strong: #1b2330;
+    --bb-text: #f4f7fb;
+    --bb-muted: #a8b0bd;
+    --bb-faint: #242c39;
+    --bb-line: rgba(244, 247, 251, 0.13);
+    --bb-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+    --bb-shadow-header: 0 10px 30px rgba(15, 23, 42, 0.08);
+    --bb-shadow-hover: 0 20px 48px rgba(15, 23, 42, 0.12);
+
+    --bb-accent: var(--bb-accent-dark);
+    --bb-accent-hover: var(--bb-accent-hover-dark);
+    --bb-accent-subtle: color-mix(in srgb, var(--bb-accent) 16%, transparent);
+    --bb-text-accent: var(--bb-accent);
+    --bb-border-accent: color-mix(in srgb, var(--bb-accent) 45%, var(--bb-line));
+    --bb-on-accent: #0c0f14;
+
+    --bb-success: #34d399;
+    --bb-warning: #fbbf24;
+    --bb-danger: #f87171;
+    --bb-success-subtle: color-mix(in srgb, var(--bb-success) 9%, transparent);
+    --bb-warning-subtle: color-mix(in srgb, var(--bb-warning) 9%, transparent);
+    --bb-danger-subtle: color-mix(in srgb, var(--bb-danger) 9%, transparent);
+
+    --bb-keystone: #e3bd4f;
+    --bb-keystone-text: #e3bd4f;
+
+    color-scheme: dark;
+  }
+}
+
+[data-theme='dark'] {
+  --bb-bg: #0c0f14;
+  --bb-surface: #141821;
+  --bb-surface-strong: #1b2330;
+  --bb-text: #f4f7fb;
+  --bb-muted: #a8b0bd;
+  --bb-faint: #242c39;
+  --bb-line: rgba(244, 247, 251, 0.13);
+  --bb-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+  --bb-shadow-header: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --bb-shadow-hover: 0 20px 48px rgba(15, 23, 42, 0.12);
+
+  --bb-accent: var(--bb-accent-dark);
+  --bb-accent-hover: var(--bb-accent-hover-dark);
+  --bb-accent-subtle: color-mix(in srgb, var(--bb-accent) 16%, transparent);
+  --bb-text-accent: var(--bb-accent);
+  --bb-border-accent: color-mix(in srgb, var(--bb-accent) 45%, var(--bb-line));
+  --bb-on-accent: #0c0f14;
+
+  --bb-success: #34d399;
+  --bb-warning: #fbbf24;
+  --bb-danger: #f87171;
+  --bb-success-subtle: color-mix(in srgb, var(--bb-success) 9%, transparent);
+  --bb-warning-subtle: color-mix(in srgb, var(--bb-warning) 9%, transparent);
+  --bb-danger-subtle: color-mix(in srgb, var(--bb-danger) 9%, transparent);
+
+  --bb-keystone: #e3bd4f;
+  --bb-keystone-text: #e3bd4f;
+
+  color-scheme: dark;
+}
+
+/*
+ * Short aliases kept for bea.sh. Redeclared wherever a theme is set so they follow it.
+ * data-product belongs on <html> (or on the same element as a data-theme scope).
+ */
+:root,
+[data-theme] {
+  --bg: var(--bb-bg);
+  --surface: var(--bb-surface);
+  --surface-strong: var(--bb-surface-strong);
+  --text: var(--bb-text);
+  --muted: var(--bb-muted);
+  --faint: var(--bb-faint);
+  --line: var(--bb-line);
+  --shadow: var(--bb-shadow);
+  --accent: var(--bb-accent);
+  --accent-strong: var(--bb-accent-hover);
+  --accent-subtle: var(--bb-accent-subtle);
+  --on-accent: var(--bb-on-accent);
+  --success: var(--bb-success);
+  --warning: var(--bb-warning);
+  --danger: var(--bb-danger);
+  --success-subtle: var(--bb-success-subtle);
+  --warning-subtle: var(--bb-warning-subtle);
+  --keystone: var(--bb-keystone);
+  --code-bg: var(--bb-code-bg);
+  --code-raised: var(--bb-code-raised);
+  --code-text: var(--bb-code-text);
+  --font-mono: var(--bb-font-mono);
+  --space-2xs: var(--bb-space-2xs);
+  --space-xs: var(--bb-space-xs);
+  --space-sm: var(--bb-space-sm);
+  --space-md: var(--bb-space-md);
+  --space-lg: var(--bb-space-lg);
+  --space-xl: var(--bb-space-xl);
+  --space-2xl: var(--bb-space-2xl);
+  --space-3xl: var(--bb-space-3xl);
+  --space-4xl: var(--bb-space-4xl);
+  --space-5xl: var(--bb-space-5xl);
+  --space-6xl: var(--bb-space-6xl);
+  --radius-sm: var(--bb-radius-sm);
+  --radius-md: var(--bb-radius-md);
+  --radius-lg: var(--bb-radius-lg);
+  --radius-full: var(--bb-radius-full);
+}
